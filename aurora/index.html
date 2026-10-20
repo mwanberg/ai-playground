@@ -191,6 +191,10 @@ const Sound = (() => {
     if (ready) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { enabled = false; return; }
+    // Declares the sound as media playback, as a video's is, instead of the
+    // ambient audio that Web Audio alone defaults to. Playback pauses other
+    // apps' music rather than mixing with it.
+    if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
     ac = new AC();
     ready = true;
 

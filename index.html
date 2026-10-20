@@ -145,7 +145,8 @@
             width="1280" height="800">
           <p class="card-description">An interactive musical night sky. Drag to paint curtains of aurora with chimes
             playing as you go. An early exploration stemming from a late night request to Claude Opus 4.8 to "make me
-            something sparkly." Might be a little heavy in your browser.</p>
+            something sparkly." Might be a little heavy in your browser. Sometimes the sound is buggy, especially on
+            iPhones.</p>
           <p class="card-date">Created <time datetime="2026-07-28">July 28, 2026</time></p>
         </div>
       </li>
@@ -180,13 +181,24 @@
 
   <script>
     /* Escape hides a showing tooltip without moving focus or the pointer
-       (WCAG 1.4.13). The selector matches the conditions that show a tip in
-       styles.css, so only the showing one is dismissed. The tip can show
-       again once the pointer leaves the flag or focus leaves the link. */
+       (WCAG 1.4.13). It closes a tip opened by a click, and dismisses one
+       shown by hover or focus, matching those conditions in styles.css so
+       only the showing one is dismissed. A dismissed tip can show again
+       once the pointer leaves the flag or focus leaves the link. */
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
+      for (const card of document.querySelectorAll('.card[data-tip-open]')) {
+        delete card.dataset.tipOpen;
+      }
       for (const card of document.querySelectorAll('.card:has(.a11y-flag:hover, .card-link:focus-visible)')) {
         card.dataset.tipDismissed = '';
+      }
+    });
+
+    /* A click anywhere but a tip's own flag closes a tip opened by a click. */
+    document.addEventListener('click', (event) => {
+      for (const card of document.querySelectorAll('.card[data-tip-open]')) {
+        if (!card.querySelector('.a11y-flag').contains(event.target)) delete card.dataset.tipOpen;
       }
     });
     for (const card of document.querySelectorAll('.card')) {
@@ -210,10 +222,22 @@
       if (left + nudge < EDGE) nudge = EDGE - left;
       tip.style.setProperty('--tip-nudge', `${nudge}px`);
     }
+    /* A click or tap on the flag toggles its tip, which is how a touch
+       screen, with no hover, shows it. */
     for (const card of document.querySelectorAll('.card:has(.a11y-flag-tip)')) {
+      const flag = card.querySelector('.a11y-flag');
       const tip = card.querySelector('.a11y-flag-tip');
-      card.querySelector('.a11y-flag').addEventListener('pointerenter', () => keepOnScreen(tip));
+      flag.addEventListener('pointerenter', () => keepOnScreen(tip));
       card.querySelector('.card-link').addEventListener('focus', () => keepOnScreen(tip));
+      flag.addEventListener('click', () => {
+        if ('tipOpen' in card.dataset) {
+          delete card.dataset.tipOpen;
+          return;
+        }
+        card.dataset.tipOpen = '';
+        delete card.dataset.tipDismissed;
+        keepOnScreen(tip);
+      });
     }
 
     /* The footer's theme switch: Light and Dark set data-theme and save the

@@ -161,6 +161,11 @@
        scales with the title. */
     --flag-baseline: -0.33em;
     --flag-gap: var(--space-2);
+    /* The flag's hover and tap area: taller than the target minimum, and
+       reaching further right, into the blank card beside the title, than
+       left, over the title's end. */
+    --flag-target-block: 48px;
+    --flag-target-end: 32px;
     /* Body text is smaller than a card title, so the legend's icon needs a
        larger share of it to stay recognizable. */
     --flag-size-legend: 1.3em;
@@ -551,6 +556,22 @@
     vertical-align: var(--flag-baseline);
   }
 
+  /* Widens the flag's hover and tap area beyond the icon, which is
+     smaller than the target minimum, without moving it. On the left it
+     reaches half the target minimum from the icon's center. It lies under
+     the icon but, inside the flag's own stacking context, still above the
+     card's link. */
+  .a11y-flag::before {
+    content: "";
+    position: absolute;
+    z-index: var(--layer-behind);
+    inset-block-start: 50%;
+    inset-inline-start: calc((var(--flag-size) - var(--target-min)) / 2);
+    inset-inline-end: calc(var(--flag-target-end) * -1);
+    block-size: var(--flag-target-block);
+    translate: 0 -50%;
+  }
+
   .a11y-flag-icon {
     display: block;
     inline-size: var(--flag-size);
@@ -574,13 +595,25 @@
     opacity: 0;
   }
 
-  /* index.html's Escape handler sets data-tip-dismissed; leaving the flag
-     or the link clears it. */
-  .card:not([data-tip-dismissed]) .a11y-flag:hover .a11y-flag-tip,
+  /* index.html's script sets data-tip-open when the flag is clicked or
+     tapped, and data-tip-dismissed on Escape; leaving the flag or the link
+     clears the dismissal. */
+  .card[data-tip-open] .a11y-flag-tip,
   .card:not([data-tip-dismissed]):has(.card-link:focus-visible) .a11y-flag-tip {
     display: block;
     translate: -50% 0;
     opacity: 1;
+  }
+
+  /* Only where the pointer can hover: a touch screen keeps :hover on the
+     last tapped element, which would hold the tip open after a second tap
+     closes it. */
+  @media (hover: hover) {
+    .card:not([data-tip-dismissed]) .a11y-flag:hover .a11y-flag-tip {
+      display: block;
+      translate: -50% 0;
+      opacity: 1;
+    }
   }
 
   /* display switches discretely, so the tip stays displayed until its
@@ -595,6 +628,7 @@
     }
 
     @starting-style {
+      .card[data-tip-open] .a11y-flag-tip,
       .card:not([data-tip-dismissed]) .a11y-flag:hover .a11y-flag-tip,
       .card:not([data-tip-dismissed]):has(.card-link:focus-visible) .a11y-flag-tip {
         translate: -50% var(--tip-rise);

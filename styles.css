@@ -1,0 +1,948 @@
+/* Later layers win, so components override base without raising specificity. */
+@layer tokens, base, components;
+
+/* TOKENS: every visual value is declared here as a custom property, with
+   its user-preference overrides. The other layers use only these. Media
+   query breakpoints are the exception, since custom properties cannot be
+   used in a media query. */
+@layer tokens {
+  :root {
+    /* Colors are light-dark(light, dark) pairs. color-scheme picks the
+       side: light dark follows the system, and the footer's theme switch
+       sets data-theme to force one. */
+    color-scheme: light dark;
+
+    /* Text colors need 7:1 against --color-bg and --color-surface; the
+       focus color needs 3:1 against both. */
+    --color-bg: light-dark(#f4f6fb, #161922);
+    --color-surface: light-dark(#ffffff, #212532);
+    --color-text: light-dark(#1b1e29, #f0f2f7);
+    --color-text-muted: light-dark(#3d4252, #c4c8d6);
+    --color-link: var(--color-text);
+    /* Transparent: in forced colors mode the browser replaces it with a
+       system color and drops the shadows, so it outlines the paper. Under
+       prefers-contrast: more it is --color-text. */
+    --color-paper-edge: transparent;
+    --color-focus: light-dark(#3546c8, #9fb0ff);
+    /* Fill behind a card image, visible while it loads or if it fails. */
+    --color-image-placeholder: light-dark(#e9ecf3, #2a2f3e);
+
+    /* Decoration. The dots never sit behind text: text is always on a
+       solid surface. The highlighter sits behind the page title, which is
+       large text, so it needs 4.5:1 against --color-text. */
+    --color-dot: light-dark(#c3c9d9, #2c3242);
+    /* Yellow highlighter ink in light mode; in dark mode, a deep rose from
+       the tape's pink, since a yellow dark enough for light text turns
+       muddy. */
+    --color-highlight: light-dark(#ffe27a, #7a2b4a);
+    /* Button hover fill and the theme switch's thumb: in light mode a
+       slightly heavier ink. Text and icons on it are normal size, so it
+       needs 7:1, stricter than the title's 4.5:1 on --color-highlight. */
+    --color-highlight-pool: light-dark(#fbd450, #7a2b4a);
+    --color-tape-1: rgb(255 160 185 / 0.7);
+    --color-tape-2: rgb(130 205 255 / 0.7);
+    --color-tape-3: rgb(150 225 185 / 0.7);
+    --color-tape-4: rgb(200 180 255 / 0.7);
+    --color-tape-5: rgb(255 200 145 / 0.7);
+    /* Taped paper: a hairline and contact shadow all round, plus a lift
+       shadow under the untaped bottom edge only; its negative spread keeps
+       it off the top and sides. */
+    --shadow-paper:
+      0 0 0 1px light-dark(rgb(20 24 40 / 0.05), rgb(0 0 0 / 0.35)),
+      0 1px 2px light-dark(rgb(20 24 40 / 0.12), rgb(0 0 0 / 0.45)),
+      0 14px 12px -12px light-dark(rgb(20 24 40 / 0.3), rgb(0 0 0 / 0.7));
+    /* Things that float above the page: the tooltip and the dialog. */
+    --shadow-float:
+      0 1px 2px light-dark(rgb(20 24 40 / 0.08), rgb(0 0 0 / 0.4)),
+      0 10px 28px light-dark(rgb(20 24 40 / 0.1), rgb(0 0 0 / 0.35));
+    /* Print: a card's screenshot, styled as a photo print on the paper. */
+    --shadow-print: 0 2px 6px light-dark(rgb(20 24 40 / 0.18), rgb(0 0 0 / 0.5));
+    --print-tilt: 1.35deg;
+
+    --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+    --font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+    --font-size-small: 0.875rem;
+    --font-size-body: 1.0625rem;
+    --font-size-card-title: 1.375rem;
+    /* The minimum keeps "Playground" on one line in a 320px viewport (400%
+       zoom), where the intro leaves about 5.5 times the title size for it. */
+    --font-size-page-title: clamp(2.25rem, 1.5rem + 5vw, 4rem);
+    --font-weight-display: 800;
+    --font-weight-strong: 700;
+    --letter-spacing-display: -0.035em;
+    --line-height-body: 1.6;
+    --line-height-tight: 1.15;
+
+    /* Spacing scale: multiples of 8px, plus one 4px half-step for tight
+       spots. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    --space-4: 1.5rem;
+    --space-5: 2rem;
+    --space-6: 3rem;
+    --space-7: 4rem;
+
+    /* Page grid: every block spans whole columns, so edges line up. */
+    --grid-columns: 12;
+    --gutter: var(--space-4);
+    --page-max: 75rem;
+    --page-inline: var(--space-4);
+    /* Room above the intro; at least half of --tape-block-size, the tape's
+       overhang, so the tape stays on screen. */
+    --page-block-start: var(--space-7);
+    --intro-padding: var(--space-6);
+    --dot-spacing: var(--gutter);
+    --dot-size: 1px;
+    --dot-fade: calc(var(--dot-size) * 1.5);
+
+    /* Stacking inside a card: the stretched link covers the rotated print,
+       and the flag sits above the link so the pointer can reach it. The
+       tape lies over the link's focus ring, where no focus color could
+       contrast with both the page and the pale tape; the rest of the ring
+       stays visible. */
+    --layer-behind: -1;
+    --layer-link: 1;
+    --layer-flag: 2;
+    --layer-tape: 3;
+
+    --radius: 0.375rem;
+    --border-width: 1px;
+    --focus-width: 3px;
+    --focus-offset: 3px;
+    --underline-width: 1px;
+    --underline-width-hover: 2px;
+    --underline-offset: 0.2em;
+
+    /* Card image shape; screenshots of another shape are cropped to it. */
+    --card-image-ratio: 16 / 10;
+    /* Highlighter stroke behind "Playground": the lower part of the line,
+       barely past each end of the word, at a slight angle with uneven
+       rounded ends. In em of the title. */
+    --highlight-inset: 0.6em -0.05em 0.1em -0.02em;
+    --highlight-radius: 0.1em 0.2em 0.12em 0.22em;
+    --highlight-tilt: -0.5deg;
+
+    /* Buttons: a thin line drawn twice, the second pass slightly askew. */
+    --button-line: 1px;
+    --button-radius: 0.5rem 0.35rem 0.55rem 0.3rem / 0.35rem 0.55rem 0.3rem 0.5rem;
+    --button-second-radius: 0.6rem 0.3rem 0.5rem 0.4rem / 0.4rem 0.6rem 0.35rem 0.5rem;
+    /* How far the second line reaches past the border; the focus ring
+       clears it by this much. */
+    --button-second-reach: 3px;
+    --button-second-inset:
+      calc(var(--button-second-reach) * -1) -2px -2px calc(var(--button-second-reach) * -1);
+    --button-second-tilt: -1.2deg;
+    /* On hover the second line eases most of the way into line. */
+    --button-hover-straighten: 0.3;
+    --button-press: 1px;
+
+    --tape-inline-size: 6rem;
+    --tape-block-size: 1.5rem;
+    --tape-angle-intro-start: -4deg;
+    --tape-angle-intro-end: 3deg;
+    /* Torn ends: a jagged edge at each short side of a tape strip. */
+    --tape-edge: polygon(
+      0 8%, 3% 0, 97% 0, 100% 10%, 98% 28%, 100% 46%, 97% 64%, 100% 82%,
+      97% 100%, 3% 100%, 0 90%, 2% 72%, 0 54%, 3% 36%, 0 18%
+    );
+    --prose-max: 65ch;
+    /* Minimum size for controls outside running text. */
+    --target-min: 44px;
+
+    /* Small icons set inside a line of text, such as the external link
+       arrow; the baseline offset centers them on the text. */
+    --icon-inline-size: 0.8em;
+    --icon-inline-baseline: -0.1em;
+
+    /* Accessibility flag: the icon after a card title and its tooltip. */
+    --flag-size: 1em;
+    /* Optical offset that sets the icon low beside the title; in em so it
+       scales with the title. */
+    --flag-baseline: -0.33em;
+    --flag-gap: var(--space-2);
+    /* Body text is smaller than a card title, so the legend's icon needs a
+       larger share of it to stay recognizable. */
+    --flag-size-legend: 1.3em;
+    --flag-legend-baseline: -0.3em;
+    --tip-max: 16rem;
+    --tip-rise: 0.25rem;
+    --tip-arrow: 0.625rem;
+    /* Horizontal correction that keeps a showing tip inside the window;
+       index.html's script sets it per tip. */
+    --tip-nudge: 0px;
+
+    /* Backstory dialog. */
+    --dialog-max: 40rem;
+    --dialog-viewport-gap: var(--page-inline);
+    /* A viewport unit, so the paper's limit does not depend on the dialog's
+       own height, which follows its content. */
+    --dialog-max-block: min(40rem, 100dvh - 2 * var(--dialog-viewport-gap));
+    --dialog-padding: var(--intro-padding);
+    --dialog-rise: 0.75rem;
+    --color-backdrop: light-dark(rgb(20 24 40 / 0.45), rgb(0 0 0 / 0.6));
+
+    /* Footer theme switch: a pill-shaped track with a thumb that slides to
+       the chosen option. */
+    --switch-padding: 3px;
+    --switch-radius: 999px;
+    /* Each option is a fixed square slot, so the track never changes size;
+       the target minimum keeps each slot easy to hit. */
+    --switch-option-size: var(--target-min);
+    --switch-icon-size: 1.125rem;
+    /* The thumb's slide: slower than other motion, easing in and out. */
+    --switch-duration: 450ms;
+    --ease-in-out: cubic-bezier(0.45, 0, 0.25, 1);
+
+    /* Motion: one curve, fast at the start and settling gently. Quick is
+       for small feedback such as a fill or a tooltip; settle is for things
+       that move into place. */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --duration-quick: 150ms;
+    --duration-settle: 260ms;
+  }
+
+  /* Narrow viewports, including high zoom: tighter page edges and intro
+     padding leave room for the text. */
+  @media (width < 40rem) {
+    :root {
+      --page-inline: var(--space-3);
+      --intro-padding: var(--space-4);
+    }
+  }
+
+  /* A theme chosen in the footer overrides the system preference. */
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  @media (prefers-contrast: more) {
+    :root {
+      --color-paper-edge: var(--color-text);
+    }
+  }
+
+  /* In forced colors mode the browser replaces authored colors but keeps
+     system colors. Highlight keeps the focus ring distinct from text, and
+     Canvas keeps the flag badge's ring and "x", drawn in --color-surface,
+     apart from the badge's disc. */
+  @media (forced-colors: active) {
+    :root {
+      --color-focus: Highlight;
+      --color-surface: Canvas;
+    }
+  }
+
+  /* Per-card variety: tape color cycles every 5 cards; tape angle,
+     torn-end direction, position, and length, and the print's tilt, every
+     7. Cards up to 4 apart always differ in color, which covers every
+     side, stacked, and diagonal neighbor in the gallery's 1, 2, or 3
+     columns. Neither 5 nor 7 shares a factor with 2 or 3, so each column
+     steps through every color and angle. */
+  .card:nth-child(5n + 1) { --tape-color: var(--color-tape-1); }
+  .card:nth-child(5n + 2) { --tape-color: var(--color-tape-2); }
+  .card:nth-child(5n + 3) { --tape-color: var(--color-tape-3); }
+  .card:nth-child(5n + 4) { --tape-color: var(--color-tape-4); }
+  .card:nth-child(5n + 5) { --tape-color: var(--color-tape-5); }
+
+  .card:nth-child(7n + 1) { --tape-angle: -3deg; --tape-flip: 1; --tape-shift: 0%; --tape-length: 1; --print-turn: -1; }
+  .card:nth-child(7n + 2) { --tape-angle: 4deg; --tape-flip: -1; --tape-shift: -6%; --tape-length: 0.9; --print-turn: 1; }
+  .card:nth-child(7n + 3) { --tape-angle: -1.5deg; --tape-flip: 1; --tape-shift: 4%; --tape-length: 1.1; --print-turn: -1; }
+  .card:nth-child(7n + 4) { --tape-angle: 2.5deg; --tape-flip: -1; --tape-shift: -3%; --tape-length: 1; --print-turn: 1; }
+  .card:nth-child(7n + 5) { --tape-angle: -5deg; --tape-flip: 1; --tape-shift: 6%; --tape-length: 0.85; --print-turn: 1; }
+  .card:nth-child(7n + 6) { --tape-angle: 1.5deg; --tape-flip: -1; --tape-shift: -5%; --tape-length: 1.15; --print-turn: -1; }
+  .card:nth-child(7n + 7) { --tape-angle: -2deg; --tape-flip: 1; --tape-shift: 2%; --tape-length: 0.95; --print-turn: 1; }
+}
+
+/* BASE */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Keeps the scrollbar's space when an open dialog hides page scrolling,
+     so the page does not shift sideways. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    background-image: radial-gradient(var(--color-dot) var(--dot-size), transparent var(--dot-fade));
+    background-size: var(--dot-spacing) var(--dot-spacing);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: var(--font-weight-display);
+    letter-spacing: var(--letter-spacing-display);
+    line-height: var(--line-height-tight);
+    text-wrap: balance;
+    /* A word wider than the line breaks instead of widening the page, as
+       "Playground" can on a narrow screen with a reader's own text
+       spacing (WCAG 1.4.12). Words that fit are unaffected. */
+    overflow-wrap: break-word;
+  }
+
+  img {
+    display: block;
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration-thickness: var(--underline-width);
+    text-underline-offset: var(--underline-offset);
+  }
+
+  /* No transition: Chromium does not animate text-decoration-thickness, so
+     the underline thickens instantly. */
+  a:hover {
+    text-decoration-thickness: var(--underline-width-hover);
+  }
+
+  :focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* Icon sprite. Zero size and absolute position take it out of layout;
+     the hidden attribute does not hide an svg element, which would
+     otherwise take a 300 by 150 box. */
+  .icon-sprite {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+    overflow: hidden;
+  }
+
+  /* Hidden on screen, still read by screen readers. */
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* COMPONENTS */
+@layer components {
+  /* PAGE GRID */
+  .page {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+    column-gap: var(--gutter);
+    row-gap: var(--space-7);
+    max-inline-size: var(--page-max);
+    margin-inline: auto;
+    padding: var(--page-block-start) var(--page-inline) var(--space-7);
+  }
+
+  /* PAPER: the intro and card sheets. */
+  .intro,
+  .card {
+    position: relative;
+    border: var(--border-width) solid var(--color-paper-edge);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-paper);
+  }
+
+  /* TAPE: decoration only, so it may overlap the paper's top edge, and
+     clicks pass through it to the card's link. */
+  .intro::before,
+  .intro::after,
+  .card::before {
+    content: "";
+    position: absolute;
+    z-index: var(--layer-tape);
+    pointer-events: none;
+    inset-block-start: calc(var(--tape-block-size) / -2);
+    inline-size: var(--tape-inline-size);
+    block-size: var(--tape-block-size);
+    background: var(--color-tape-2);
+    clip-path: var(--tape-edge);
+  }
+
+  .intro::before {
+    inset-inline-start: var(--intro-padding);
+    rotate: var(--tape-angle-intro-start);
+  }
+
+  .intro::after {
+    inset-inline-end: var(--intro-padding);
+    rotate: var(--tape-angle-intro-end);
+    background: var(--color-tape-1);
+  }
+
+  /* Color, angle, position, length, and flip come from the per-card
+     variety cycles in the tokens layer. */
+  .card::before {
+    inset-inline-start: calc(50% + var(--tape-shift));
+    inline-size: calc(var(--tape-inline-size) * var(--tape-length));
+    translate: -50% 0;
+    rotate: var(--tape-angle);
+    scale: var(--tape-flip) 1;
+    background: var(--tape-color);
+  }
+
+  /* INTRO */
+  .intro {
+    grid-column: 1 / -1;
+    padding: var(--intro-padding);
+  }
+
+  /* Isolation keeps the highlighter stroke, drawn behind the text, above
+     the intro's paper. */
+  .intro h1 {
+    isolation: isolate;
+    margin-block: 0 var(--space-4);
+    font-size: var(--font-size-page-title);
+  }
+
+  .intro p {
+    max-inline-size: var(--prose-max);
+    margin-block: 0 var(--space-3);
+  }
+
+  .intro p:last-child {
+    margin-block-end: 0;
+  }
+
+  .intro-disclaimer {
+    color: var(--color-text-muted);
+  }
+
+  .hl {
+    position: relative;
+    padding-inline: var(--space-1);
+  }
+
+  .hl::before {
+    content: "";
+    position: absolute;
+    z-index: var(--layer-behind);
+    inset: var(--highlight-inset);
+    border-radius: var(--highlight-radius);
+    background: var(--color-highlight);
+    rotate: var(--highlight-tilt);
+  }
+
+  /* GALLERY: a subgrid, so cards span the page's own columns. */
+  .gallery {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    row-gap: var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    grid-column: 1 / -1;
+  }
+
+  @media (width >= 40rem) {
+    .card {
+      grid-column: span 6;
+    }
+  }
+
+  /* The intro spans eight columns, so its edge lines up with the second
+     card's. */
+  @media (width >= 64rem) {
+    .intro {
+      grid-column: 1 / span 8;
+    }
+
+    .card {
+      grid-column: span 4;
+    }
+  }
+
+  .card-main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  /* Only the screenshot tilts: rotated text renders soft. */
+  .card-image {
+    /* The title comes first in the source so screen reader users hear it
+       before the image; this order puts the image on top visually. */
+    order: -1;
+    inline-size: 100%;
+    aspect-ratio: var(--card-image-ratio);
+    object-fit: cover;
+    background: var(--color-image-placeholder);
+    box-shadow: var(--shadow-print);
+    rotate: calc(var(--print-tilt) * var(--print-turn));
+  }
+
+  .card:has(.card-link:hover) .card-image,
+  .card:has(.card-link:focus-visible) .card-image {
+    rotate: 0deg;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .card-image {
+      transition: rotate var(--duration-settle) var(--ease-out);
+    }
+  }
+
+  .card-title {
+    margin: var(--space-2) 0 0;
+    font-size: var(--font-size-card-title);
+  }
+
+  /* Stretches the link's click area over the whole card body, so the image
+     is clickable without a second link or tab stop. The rotated image
+     paints in the same layer as positioned boxes and follows the link in
+     source, so this area needs a z-index to stay above it. */
+  .card-link::after {
+    content: "";
+    position: absolute;
+    z-index: var(--layer-link);
+    inset: 0;
+    border-radius: var(--radius);
+  }
+
+  /* The ring moves from the title text to the stretched area, outlining
+     everything the link covers. */
+  .card-link:focus-visible {
+    outline: none;
+  }
+
+  .card-link:focus-visible::after {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* ACCESSIBILITY FLAG: an icon after the card title. It sits above the
+     stretched link area, so the pointer can reach it. */
+  .a11y-flag {
+    position: relative;
+    z-index: var(--layer-flag);
+    display: inline-block;
+    margin-inline-start: var(--flag-gap);
+    vertical-align: var(--flag-baseline);
+  }
+
+  .a11y-flag-icon {
+    display: block;
+    inline-size: var(--flag-size);
+    block-size: var(--flag-size);
+  }
+
+  /* Padding rather than margin, so the pointer can move from the icon onto
+     the tip without leaving the hover area. Hidden, the tip takes no space,
+     so it cannot widen the page on a narrow screen. */
+  .a11y-flag-tip {
+    display: none;
+    position: absolute;
+    inset-block-end: 100%;
+    /* The nudge goes on the position, not on translate, which the fade
+       animates; on translate the tip would slide sideways into place. */
+    inset-inline-start: calc(50% + var(--tip-nudge));
+    translate: -50% var(--tip-rise);
+    padding-block-end: var(--space-2);
+    inline-size: max-content;
+    max-inline-size: var(--tip-max);
+    opacity: 0;
+  }
+
+  /* index.html's Escape handler sets data-tip-dismissed; leaving the flag
+     or the link clears it. */
+  .card:not([data-tip-dismissed]) .a11y-flag:hover .a11y-flag-tip,
+  .card:not([data-tip-dismissed]):has(.card-link:focus-visible) .a11y-flag-tip {
+    display: block;
+    translate: -50% 0;
+    opacity: 1;
+  }
+
+  /* display switches discretely, so the tip stays displayed until its
+     fade-out ends; the starting style gives the fade-in somewhere to start
+     from. */
+  @media (prefers-reduced-motion: no-preference) {
+    .a11y-flag-tip {
+      transition:
+        opacity var(--duration-quick) var(--ease-out),
+        translate var(--duration-quick) var(--ease-out),
+        display var(--duration-quick) allow-discrete;
+    }
+
+    @starting-style {
+      .card:not([data-tip-dismissed]) .a11y-flag:hover .a11y-flag-tip,
+      .card:not([data-tip-dismissed]):has(.card-link:focus-visible) .a11y-flag-tip {
+        translate: -50% var(--tip-rise);
+        opacity: 0;
+      }
+    }
+  }
+
+  /* The tip sits inside the h2, so it resets the heading's display type. */
+  .a11y-flag-tip-body {
+    position: relative;
+    display: block;
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-width) solid var(--color-text);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-float);
+    font-family: var(--font-body);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-strong);
+    letter-spacing: normal;
+    line-height: var(--line-height-tight);
+  }
+
+  /* The arrow: a square turned 45 degrees, showing only its two lower
+     borders, so its point points at the icon below. The nudge that keeps
+     the tip on screen is undone here, so the arrow stays over the icon. */
+  .a11y-flag-tip-body::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: calc(50% - var(--tip-nudge));
+    inline-size: var(--tip-arrow);
+    block-size: var(--tip-arrow);
+    translate: -50% -50%;
+    rotate: 45deg;
+    border-inline-end: var(--border-width) solid var(--color-text);
+    border-block-end: var(--border-width) solid var(--color-text);
+    background: var(--color-surface);
+  }
+
+  .intro-legend {
+    color: var(--color-text-muted);
+  }
+
+  .intro-legend svg {
+    display: inline-block;
+    inline-size: var(--flag-size-legend);
+    block-size: var(--flag-size-legend);
+    vertical-align: var(--flag-legend-baseline);
+  }
+
+  .card-description {
+    margin: 0;
+    color: var(--color-text-muted);
+  }
+
+  /* BACKSTORY: a card's optional button and its modal dialog. The button
+     sits outside .card-main, so the stretched link does not cover it. */
+  .backstory-open,
+  .backstory-close {
+    position: relative;
+    min-block-size: var(--target-min);
+    padding: var(--space-2) var(--space-3);
+    border: var(--button-line) solid var(--color-text);
+    border-radius: var(--button-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-weight: var(--font-weight-strong);
+    cursor: pointer;
+    transition: background-color var(--duration-quick) var(--ease-out);
+  }
+
+  /* The second, askew line. */
+  .backstory-open::after,
+  .backstory-close::after {
+    content: "";
+    position: absolute;
+    inset: var(--button-second-inset);
+    border: var(--button-line) solid var(--color-text);
+    border-radius: var(--button-second-radius);
+    rotate: var(--button-second-tilt);
+    pointer-events: none;
+  }
+
+  .backstory-open:hover,
+  .backstory-close:hover {
+    background: var(--color-highlight-pool);
+  }
+
+  .backstory-open:focus-visible,
+  .backstory-close:focus-visible {
+    outline-offset: calc(var(--focus-offset) + var(--button-second-reach));
+  }
+
+  /* The fill fade above sits outside the reduced-motion query: a color
+     change moves nothing. */
+  @media (prefers-reduced-motion: no-preference) {
+    .backstory-open,
+    .backstory-close {
+      transition:
+        background-color var(--duration-quick) var(--ease-out),
+        translate var(--duration-quick) var(--ease-out);
+    }
+
+    .backstory-open::after,
+    .backstory-close::after {
+      transition: rotate var(--duration-settle) var(--ease-out);
+    }
+
+    .backstory-open:hover::after,
+    .backstory-close:hover::after {
+      rotate: calc(var(--button-second-tilt) * var(--button-hover-straighten));
+    }
+
+    .backstory-open:active,
+    .backstory-close:active {
+      translate: 0 var(--button-press);
+    }
+  }
+
+  /* The top margin clears the card link's focus ring, drawn outside
+     .card-main, and this button's own second line. */
+  .backstory-open {
+    margin:
+      calc(var(--focus-offset) + var(--focus-width) + var(--button-second-reach))
+      var(--space-4) var(--space-4);
+  }
+
+  /* No padding, so .backstory-paper fills the dialog and a click whose
+     target is the dialog itself came from the backdrop. max-inline-size:
+     none lifts the browser's default limit, which is narrower than the page
+     edges on a phone. */
+  .backstory {
+    inline-size: min(var(--dialog-max), 100% - 2 * var(--dialog-viewport-gap));
+    max-inline-size: none;
+    max-block-size: none;
+    padding: 0;
+    border: var(--border-width) solid var(--color-paper-edge);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-float);
+    color: var(--color-text);
+    overflow: visible;
+  }
+
+  .backstory::backdrop {
+    background: var(--color-backdrop);
+  }
+
+  /* The scrolling region. Close sits inside it, so arrow keys pressed on
+     Close scroll the backstory; the region is also focusable itself, for
+     browsers that do not make scrolling areas focusable on their own. */
+  .backstory-paper {
+    max-block-size: var(--dialog-max-block);
+    padding: var(--dialog-padding);
+    overflow-y: auto;
+  }
+
+  /* Heading and Close share a row, so a long heading wraps beside the
+     button instead of running under it. */
+  .backstory-head {
+    display: flex;
+    align-items: start;
+    gap: var(--space-3);
+    margin-block-end: var(--space-4);
+  }
+
+  .backstory h2 {
+    flex: 1;
+    margin: 0;
+    font-size: var(--font-size-card-title);
+  }
+
+  .backstory p {
+    max-inline-size: var(--prose-max);
+    margin: 0 0 var(--space-3);
+  }
+
+  .backstory p:last-child {
+    margin-block-end: 0;
+  }
+
+  .backstory-close {
+    min-inline-size: var(--target-min);
+  }
+
+  /* Scrolling the page behind an open dialog would move the cards out from
+     under the reader. */
+  html:has(.backstory[open]) {
+    overflow: hidden;
+  }
+
+  /* overlay and display switch discretely, keeping the dialog in the top
+     layer and displayed until its fade-out ends. */
+  @media (prefers-reduced-motion: no-preference) {
+    .backstory {
+      transition:
+        opacity var(--duration-settle) var(--ease-out),
+        translate var(--duration-settle) var(--ease-out),
+        overlay var(--duration-settle) allow-discrete,
+        display var(--duration-settle) allow-discrete;
+    }
+
+    .backstory::backdrop {
+      transition:
+        opacity var(--duration-settle) var(--ease-out),
+        overlay var(--duration-settle) allow-discrete,
+        display var(--duration-settle) allow-discrete;
+    }
+
+    .backstory {
+      opacity: 0;
+      translate: 0 var(--dialog-rise);
+    }
+
+    .backstory::backdrop {
+      opacity: 0;
+    }
+
+    .backstory[open] {
+      opacity: 1;
+      translate: 0 0;
+    }
+
+    .backstory[open]::backdrop {
+      opacity: 1;
+    }
+
+    @starting-style {
+      .backstory[open] {
+        opacity: 0;
+        translate: 0 var(--dialog-rise);
+      }
+
+      .backstory[open]::backdrop {
+        opacity: 0;
+      }
+    }
+  }
+
+  /* FOOTER: a full-width solid strip; its text lines up with the page grid. */
+  .site-footer {
+    padding-block: var(--space-5);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+
+  .site-footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+    max-inline-size: var(--page-max);
+    margin: 0 auto;
+    padding-inline: var(--page-inline);
+  }
+
+  .site-footer-inner p {
+    margin: 0;
+  }
+
+  /* THEME SWITCH: a sliding toggle over native radios, which stay focusable
+     though hidden, so keyboard use and announcements come from the browser.
+     The script removes the hidden attribute; without it the switch could
+     not work. The auto margin keeps it at the right edge, also when it
+     wraps under the credit line. */
+  .theme-switch:not([hidden]) {
+    display: flex;
+    margin-inline-start: auto;
+  }
+
+  /* Forced colors mode overrides color-scheme, so a theme choice would
+     change nothing there. */
+  @media (forced-colors: active) {
+    .theme-switch:not([hidden]) {
+      display: none;
+    }
+  }
+
+  .theme-switch-track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, var(--switch-option-size));
+    padding: var(--switch-padding);
+    border: var(--button-line) solid var(--color-text);
+    border-radius: var(--switch-radius);
+    background: var(--color-bg);
+  }
+
+  /* The thumb under the checked option. Its border keeps the selection
+     visible in forced colors mode, where the fill is dropped. */
+  .theme-switch-track::before {
+    content: "";
+    position: absolute;
+    inset-block: var(--switch-padding);
+    inset-inline-start: var(--switch-padding);
+    inline-size: calc((100% - 2 * var(--switch-padding)) / 3);
+    border: var(--button-line) solid var(--color-text);
+    border-radius: var(--switch-radius);
+    background: var(--color-highlight-pool);
+    translate: calc(var(--switch-index) * 100%) 0;
+  }
+
+  .theme-switch-track:has(input[value="light"]:checked) { --switch-index: 0; }
+  .theme-switch-track:has(input[value="dark"]:checked) { --switch-index: 1; }
+  .theme-switch-track:has(input[value="system"]:checked) { --switch-index: 2; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .theme-switch-track::before {
+      transition: translate var(--switch-duration) var(--ease-in-out);
+    }
+
+    .theme-option {
+      transition: background-color var(--duration-quick) var(--ease-out);
+    }
+  }
+
+  .theme-option {
+    position: relative;
+    display: grid;
+    place-items: center;
+    block-size: var(--switch-option-size);
+    border-radius: var(--switch-radius);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .theme-option:hover:not(:has(input:checked)) {
+    background: var(--color-image-placeholder);
+  }
+
+  /* The radio itself is hidden, so its focus ring moves to the option. It
+     sits inside the option, on the track or the thumb, because outside it
+     would cross the track's border, which is text-colored. */
+  .theme-option:has(input:focus-visible) {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: calc(var(--focus-width) * -1);
+  }
+
+  .theme-option svg {
+    inline-size: var(--switch-icon-size);
+    block-size: var(--switch-icon-size);
+  }
+
+  /* Marks a link that opens in a new tab; the link's hidden text says the
+     same to screen readers. */
+  .icon-external {
+    display: inline-block;
+    inline-size: var(--icon-inline-size);
+    block-size: var(--icon-inline-size);
+    margin-inline-start: var(--space-1);
+    vertical-align: var(--icon-inline-baseline);
+  }
+}

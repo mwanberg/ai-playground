@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurora Instrument</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #03040a; }
+  body { font: 400 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  /* dvh, because iOS Safari's 100vh is the toolbar-collapsed height: the canvas would be
+     taller than the visible area, stretching the scene and pushing the hud off screen. */
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+  @supports (height: 100dvh) { canvas { height: 100dvh; } }
+
+  .hud {
+    position: fixed; z-index: 5;
+    left: max(20px, env(safe-area-inset-left));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    right: max(20px, env(safe-area-inset-right));
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    transition: opacity .8s ease;
+  }
+  /* Dim enough to recede, not so dim you have to hunt for it. */
+  .hud.dim { opacity: .34; }
+  button {
+    font: inherit; letter-spacing: .06em; text-transform: lowercase;
+    color: #cfe9ff; background: rgba(10, 22, 40, .5);
+    border: 1px solid rgba(150, 220, 255, .22); border-radius: 999px;
+    padding: 7px 15px; cursor: pointer;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: background .2s, border-color .2s, color .2s, transform .1s;
+  }
+  button:hover { background: rgba(30, 70, 110, .6); border-color: rgba(180, 240, 255, .5); color: #fff; }
+  button:active { transform: translateY(1px); }
+  button[aria-pressed="false"] { color: rgba(180, 210, 235, .45); border-color: rgba(120, 170, 200, .12); }
+
+  /* A finger needs a bigger target than a cursor does. */
+  @media (hover: none) {
+    button { padding: 12px 18px; }
+  }
+
+  .title {
+    position: fixed; inset: 0; z-index: 4; display: grid; place-content: center;
+    text-align: center; pointer-events: none;
+    transition: opacity 1.6s ease 1s;
+  }
+  .title h1 {
+    margin: 0; font-weight: 200; font-size: clamp(28px, 6vw, 62px);
+    letter-spacing: .34em; text-transform: uppercase;
+    color: #eaf7ff; text-shadow: 0 0 42px rgba(120, 255, 220, .5), 0 0 100px rgba(90, 160, 255, .35);
+  }
+  .title p {
+    margin: 1.4em 0 0; font-size: 13px; letter-spacing: .3em; text-transform: uppercase;
+    color: rgba(190, 225, 245, .6);
+  }
+  .title.gone { opacity: 0; }
+</style>
+<!-- icons -->
+<link rel="icon" href="../favicon.ico?v=5527d947" sizes="32x32">
+<link rel="icon" href="../favicon.svg?v=9356d9ef" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=b6b447d3">
+<link rel="manifest" href="../site.webmanifest?v=02307423">
+<!-- /icons -->
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<div class="title" id="title">
+  <h1>Aurora</h1>
+  <p>drag to paint the sky</p>
+</div>
+
+<div class="hud" id="hud">
+  <button id="btn-sound" aria-pressed="true">sound</button>
+  <button id="btn-auto" aria-pressed="true">sky plays itself</button>
+  <button id="btn-clear">clear</button>
+  <button id="btn-storm">storm</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------------------------------------------------------------- utilities */
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[(Math.random() * arr.length) | 0];
+
+/** Deterministic value noise, smooth in 1D. Cheap enough to call per column per frame. */
+function makeNoise(seed) {
+  const size = 512;
+  const table = new Float32Array(size);
+  let s = seed >>> 0;
+  for (let i = 0; i < size; i++) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    table[i] = s / 4294967296;
+  }
+  const at = i => table[((i % size) + size) % size];
+  const base = x => {
+    const i = Math.floor(x);
+    return lerp(at(i), at(i + 1), smooth(x - i));
+  };
+  return (x, octaves = 3) => {
+    let sum = 0, amp = 1, norm = 0, f = 1;
+    for (let o = 0; o < octaves; o++) {
+      sum += base(x * f + o * 37.7) * amp;
+      norm += amp;
+      amp *= 0.5;
+      f *= 2.13;
+    }
+    return sum / norm;
+  };
+}
+
+const noise = makeNoise(20260728);
+const ridgeNoise = makeNoise(777);
+
+/* -------------------------------------------------------------------- sound */
+
+/** Pentatonic chime voice + slow pad, through a generated reverb and a shimmer delay. */
+const Sound = (() => {
+  const SCALE = [];
+  for (let oct = -1; oct <= 2; oct++) {
+    for (const f of [277.18, 329.63, 369.99, 415.30, 493.88]) SCALE.push(f * Math.pow(2, oct));
+  }
+  SCALE.sort((a, b) => a - b);
+
+  let ac = null, master, dry, verbIn, padGain, padTarget = 0, ready = false;
+  let enabled = true;
+
+  // The pad's oscillators run for the life of the context, so gain alone never releases
+  // the audio device and the tab keeps claiming audio over silence.
+  //
+  // Deciding when to suspend on a timer means guessing the worst-case tail: note
+  // envelope, plus a 3.4s reverb, plus delay feedback. Guessing generously is what made
+  // the indicator linger. An analyser on the master bus measures what is actually
+  // leaving it, so the device goes back as soon as the output is inaudible, and never
+  // mid-tail. QUIET_PEAK is about -56 dBFS.
+  const MASTER_GAIN = 0.9;
+  const QUIET_PEAK = 0.0015;
+  const QUIET_HOLD = 0.6;
+  // A chime is audibly over inside a second, so waiting longer than this to drop the
+  // drone just leaves the tab's indicator lit over nothing.
+  const IDLE_AFTER = 3;
+
+  let lastNoteAt = -1e9, analyser = null, scope = null, quietSince = null, lastPeak = 0;
+  let unlocked = false;
+
+  /** The one way the device is woken. The quiet clock has to restart with it: currentTime
+   *  freezes while suspended, so a carried-over quietSince still reads as "quiet for
+   *  longer than QUIET_HOLD" and the first silent frame after resume suspends again. */
+  function wake() {
+    if (!ready) return;
+    quietSince = null;
+    if (ac.state === 'suspended') ac.resume().catch(() => {});
+  }
+
+  function impulseResponse(seconds) {
+    const rate = ac.sampleRate;
+    const len = (rate * seconds) | 0;
+    const buf = ac.createBuffer(2, len, rate);
+    // Decay by repeated multiplication rather than a Math.pow per sample. Same curve to
+    // within a hair, a fraction of the cost, and this is a quarter of a million samples of
+    // main-thread work standing between a gesture and the first chime.
+    const k = Math.pow(1e-3, 1 / len);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      let env = 1;
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * env;
+        env *= k;
+      }
+    }
+    return buf;
+  }
+
+  function boot() {
+    if (ready) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { enabled = false; return; }
+    ac = new AC();
+    ready = true;
+
+    master = ac.createGain();
+    master.gain.value = MASTER_GAIN;
+    master.connect(ac.destination);
+
+    // Post-gain, so muting reads as silence here too.
+    analyser = ac.createAnalyser();
+    analyser.fftSize = 256;
+    scope = new Float32Array(analyser.fftSize);
+    master.connect(analyser);
+
+    const verb = ac.createConvolver();
+    verb.buffer = impulseResponse(2.6);
+    const verbWet = ac.createGain();
+    verbWet.gain.value = 0.85;
+    verbIn = ac.createGain();
+    verbIn.connect(verb); verb.connect(verbWet); verbWet.connect(master);
+
+    const delay = ac.createDelay(1);
+    delay.delayTime.value = 0.29;
+    const fb = ac.createGain(); fb.gain.value = 0.36;
+    const wet = ac.createGain(); wet.gain.value = 0.3;
+    const tone = ac.createBiquadFilter();
+    tone.type = 'lowpass'; tone.frequency.value = 2600;
+    delay.connect(fb); fb.connect(tone); tone.connect(delay);
+    delay.connect(wet); wet.connect(master);
+
+    dry = ac.createGain();
+    dry.gain.value = 0.55;
+    dry.connect(master);
+    dry.connect(delay);
+    dry.connect(verbIn);
+
+    // Ambient pad: a hollow fifth that swells with how much aurora is on screen.
+    padGain = ac.createGain();
+    padGain.gain.value = 0;
+    const padFilter = ac.createBiquadFilter();
+    padFilter.type = 'lowpass';
+    padFilter.frequency.value = 620;
+    padGain.connect(padFilter);
+    padFilter.connect(master);
+    padFilter.connect(verbIn);
+    for (const [f, g, det] of [[69.3, 0.5, 0], [103.8, 0.32, 4], [138.6, 0.2, -6], [207.7, 0.1, 3]]) {
+      const o = ac.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      o.detune.value = det;
+      const vg = ac.createGain();
+      vg.gain.value = g;
+      // Slow amplitude drift so the pad never sits perfectly still.
+      const lfo = ac.createOscillator();
+      lfo.frequency.value = 0.03 + Math.random() * 0.05;
+      const lfoAmt = ac.createGain();
+      lfoAmt.gain.value = g * 0.45;
+      lfo.connect(lfoAmt); lfoAmt.connect(vg.gain);
+      o.connect(vg); vg.connect(padGain);
+      o.start(); lfo.start();
+    }
+  }
+
+  return {
+    get enabled() { return enabled; },
+    get state() { return ready ? ac.state : 'none'; },
+    get level() { return ready && ac.state === 'running' ? lastPeak : 0; },
+    toggle() {
+      enabled = !enabled;
+      if (enabled) boot();
+      if (ready) {
+        // Fast enough that mute feels immediate, slow enough not to click.
+        master.gain.setTargetAtTime(enabled ? MASTER_GAIN : 0, ac.currentTime, enabled ? 0.15 : 0.06);
+        // Muting needs no special case: the analyser sees the ramp reach silence.
+        if (enabled) wake();
+      }
+      return enabled;
+    },
+    /** Builds the graph ahead of any interaction. A context created without a gesture stays
+     *  suspended and opens no device, so this costs nothing but takes the impulse response
+     *  and the convolver's setup off the critical path: constructed inside the gesture
+     *  instead, they sit between the swipe and its first chime. */
+    prepare() { boot(); },
+    /** Called from a real input handler. Until then the sky plays silently: a browser keeps
+     *  the context suspended without a gesture, and a suspended context has a frozen
+     *  currentTime, so every note the self-playing sky schedules meanwhile lands at the same
+     *  instant and fires together the moment the device comes back. */
+    unlock() {
+      unlocked = true;
+      boot();
+      wake();
+    },
+    /** height01: 0 at the horizon, 1 at the top of the sky. */
+    note(height01, velocity = 1) {
+      // Before a gesture, dropping the note is the point: a device that cannot run has a
+      // frozen clock, so everything scheduled against it lands at one instant and fires
+      // together later. After a gesture a resume is done or in flight, currentTime is
+      // about to advance, and scheduling is safe. Waiting for state to reach 'running'
+      // instead loses every note of a short first drag.
+      if (!enabled || !unlocked) return;
+      boot();
+      if (!ready) return;
+      wake();
+
+      const idx = clamp(Math.round(height01 * (SCALE.length - 1)), 0, SCALE.length - 1);
+      const freq = SCALE[idx];
+      const t = ac.currentTime + 0.005;
+      const dur = lerp(2.6, 5.2, 1 - height01);
+      lastNoteAt = ac.currentTime;
+      quietSince = null;
+
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.16 * velocity, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      g.connect(dry);
+
+      // Two detuned triangles for body, a quiet sine partial for the glassy top.
+      let last = null;
+      for (const [type, mult, gain, det] of [['triangle', 1, 1, -5], ['triangle', 1, 0.7, 6], ['sine', 2.99, 0.16, 0]]) {
+        const o = ac.createOscillator();
+        o.type = type;
+        o.frequency.value = freq * mult;
+        o.detune.value = det;
+        const vg = ac.createGain();
+        vg.gain.value = gain;
+        o.connect(vg); vg.connect(g);
+        o.start(t);
+        o.stop(t + dur + 0.1);
+        last = o;
+      }
+      // Notes fire up to ten a second while drawing, so each voice unhooks itself from
+      // the graph once it has finished rather than relying on the engine to reclaim it.
+      last.onended = () => g.disconnect();
+    },
+    /** Called every frame, which makes it the natural place to poll the output level.
+     *  expectMore says more sound is on its way, so an idle sky keeps its drone while
+     *  the sky is playing itself and drops it once nobody is playing. */
+    setPad(amount, expectMore) {
+      padTarget = clamp(amount, 0, 1);
+      if (!ready) return;
+
+      const idle = !expectMore && ac.currentTime - lastNoteAt > IDLE_AFTER;
+      const target = enabled && !idle ? padTarget * 0.05 : 0;
+      // Faster release than swell, so going quiet does not itself take several seconds.
+      padGain.gain.setTargetAtTime(target, ac.currentTime, target > 0 ? 1.5 : 0.35);
+
+      if (ac.state !== 'running') {
+        if (target > 0 && unlocked) wake();
+        return;
+      }
+
+      analyser.getFloatTimeDomainData(scope);
+      let peak = 0;
+      for (let i = 0; i < scope.length; i++) {
+        const v = Math.abs(scope[i]);
+        if (v > peak) peak = v;
+      }
+      lastPeak = peak;
+      if (peak > QUIET_PEAK) {
+        quietSince = null;
+      } else if (quietSince === null) {
+        quietSince = ac.currentTime;
+      } else if (ac.currentTime - quietSince > QUIET_HOLD) {
+        ac.suspend();
+      }
+    }
+  };
+})();
+
+/* -------------------------------------------------------------------- stage */
+
+const canvas = document.getElementById('sky');
+// Every frame repaints the whole canvas with opaque fills and nothing clears it, so the
+// compositor can skip blending a full-screen alpha layer.
+const ctx = canvas.getContext('2d', { alpha: false });
+
+// The aurora renders into its own buffer at aurScale of CSS size: cheaper, and the upscale
+// gives it a natural softness. See AUR_MAX below for why the scale is not a fixed ratio.
+const aur = document.createElement('canvas');
+const actx = aur.getContext('2d');
+
+// A much coarser copy of the aurora, upscaled back as the bloom and reused by the lake.
+// Downsampling and resampling is the cheap blur.
+const glow = document.createElement('canvas');
+const gctx = glow.getContext('2d');
+
+// The aurora buffer is upscaled and diffuse either way, so its width is capped rather than
+// tied to the window: curtain fill rate is the frame's dominant cost, and at a fixed
+// fraction of the window it grows with window size. Half of CSS width below 1920, capped
+// there above it.
+const AUR_MAX = 960;
+
+let W = 0, H = 0, dpr = 1, horizon = 0, aurScale = 0.5, glowScale = 0.25;
+let stars = [], ridges = [], skyGradient = null, waterGradient = null;
+let ridgeBake = null, reflBake = null;
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  aurScale = Math.min(0.5, AUR_MAX / W);
+  // A quarter of the aurora buffer: the halo's softness is this upscale, so it has to be
+  // coarse enough to blur on its own now that the glow is no longer stretched.
+  glowScale = aurScale * 0.25;
+  aur.width = Math.max(2, Math.round(W * aurScale));
+  aur.height = Math.max(2, Math.round(H * aurScale));
+  glow.width = Math.max(2, Math.round(W * glowScale));
+  glow.height = Math.max(2, Math.round(H * glowScale));
+
+  horizon = Math.round(H * 0.80);
+
+  skyGradient = ctx.createLinearGradient(0, 0, 0, horizon);
+  skyGradient.addColorStop(0, '#010207');
+  skyGradient.addColorStop(0.45, '#050e1f');
+  skyGradient.addColorStop(0.82, '#08182c');
+  skyGradient.addColorStop(1, '#0c2135');
+
+  waterGradient = ctx.createLinearGradient(0, horizon, 0, H);
+  waterGradient.addColorStop(0, 'rgba(5, 14, 28, 0.22)');
+  waterGradient.addColorStop(0.3, 'rgba(3, 9, 20, 0.52)');
+  waterGradient.addColorStop(0.7, 'rgba(2, 5, 12, 0.80)');
+  waterGradient.addColorStop(1, 'rgba(0, 1, 4, 0.94)');
+
+  buildStars();
+  buildRidges();
+  bakeRidges();
+}
+
+function makeStar() {
+  const bright = Math.random() < 0.05;
+  return {
+    x: Math.random(),
+    y: Math.pow(Math.random(), 1.4),
+    r: bright ? rand(1.2, 2.1) : rand(0.35, 1.05),
+    base: bright ? rand(0.75, 1) : rand(0.2, 0.7),
+    phase: Math.random() * TAU,
+    speed: rand(0.4, 2.2),
+    bright,
+    hue: pick([205, 200, 45, 220, 190])
+  };
+}
+
+/** Stars are stored normalized, so a resize only changes how many there are. Rebuilding
+ *  the array instead would reshuffle the whole sky on every frame of a window drag, while
+ *  the ridges right below are deliberately seeded to stay put. */
+function buildStars() {
+  const count = clamp(Math.round(W * H / 3400), 160, 700);
+  while (stars.length > count) stars.pop();
+  while (stars.length < count) stars.push(makeStar());
+}
+
+/** Ridged multifractal noise, seeded, so the mountains stay the same mountains across resizes.
+ *  Folding the noise around its midpoint is what turns smooth dunes into peaks. */
+function buildRidges() {
+  ridges = [];
+  // Every crest sits above the waterline; the fill stops there, not at the page bottom.
+  // Distant layers are lighter: cheap atmospheric perspective.
+  const layers = [
+    { top: 0.700, amp: 0.105, fill: '#101e33', glow: 0.40, seed: 3.1, freq: 3.2 },
+    { top: 0.755, amp: 0.072, fill: '#070f1c', glow: 0.22, seed: 8.7, freq: 5.1 },
+    { top: 0.792, amp: 0.044, fill: '#02040c', glow: 0.10, seed: 15.3, freq: 8.4 }
+  ];
+  const ridged = x => 1 - Math.abs(2 * ridgeNoise(x, 1) - 1);
+  for (const l of layers) {
+    const pts = [];
+    const steps = 260;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const n = ridged(l.seed + t * l.freq) * 0.6
+              + ridged(l.seed * 2 + t * l.freq * 2.7) * 0.27
+              + ridged(l.seed * 3 + t * l.freq * 6.3) * 0.13;
+      pts.push({ x: t * W, y: H * l.top - n * H * l.amp });
+    }
+    ridges.push({ pts, fill: l.fill, glow: l.glow });
+  }
+}
+
+/* ------------------------------------------------------------------ ribbons */
+
+const PALETTES = [
+  { hem: [330, 100, 68], core: [148, 100, 62], mid: [168, 95, 55], top: [258, 90, 60] },
+  { hem: [300, 100, 70], core: [135, 100, 60], mid: [190, 95, 58], top: [230, 90, 62] },
+  { hem: [345, 100, 70], core: [160, 100, 58], mid: [200, 95, 60], top: [270, 88, 58] },
+  { hem: [ 22, 100, 66], core: [ 92, 100, 58], mid: [155, 95, 55], top: [225, 90, 60] }
+];
+
+const hsla = ([h, s, l], a) => `hsla(${h}, ${s}%, ${l}%, ${a})`;
+
+// A curtain's tallest possible column, as a multiple of its nominal height: the top of the
+// noise range times the peak of the breath cycle. The compositor reserves its band from
+// these rather than from a copied-out number, which drifts when either is retuned.
+const HEIGHT_MAX = 1.2;
+const BREATH_MAX = 1.1;
+const RISE_MAX = 10;
+
+/** One pre-rendered vertical curtain stripe, stretched per column at draw time. */
+function makeStripe(pal, energy) {
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 512;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 512, 0, 0);
+  // Alphas stay low because columns overlap additively; anything higher clips to white.
+  grad.addColorStop(0.00, hsla(pal.hem, 0.00));
+  grad.addColorStop(0.03, hsla(pal.hem, 0.48 * energy));
+  grad.addColorStop(0.09, hsla(pal.core, 0.62 * energy));
+  grad.addColorStop(0.22, hsla(pal.core, 0.36 * energy));
+  grad.addColorStop(0.48, hsla(pal.mid, 0.18 * energy));
+  grad.addColorStop(0.76, hsla(pal.top, 0.075 * energy));
+  grad.addColorStop(1.00, hsla(pal.top, 0.00));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 16, 512);
+  return c;
+}
+
+class Ribbon {
+  /** points: normalized {x, y} in 0..1 so the ribbon survives a window resize. */
+  constructor(points, opts = {}) {
+    this.pal = opts.pal || pick(PALETTES);
+    this.energy = -1;
+    this.height = opts.height ?? 0.3;
+    this.seed = Math.random() * 400;
+    this.drift = rand(-5, 5);
+    this.bob = rand(-3, 3);
+    this.touched = performance.now() / 1000;
+    this.created = this.touched;
+    this.dying = false;
+    this.fade = 1;
+    this.opacity = 0;
+    this.setSpine(points);
+    this.setEnergy(opts.energy ?? 1);
+  }
+
+  /** Replaceable so a stroke in progress can keep extending the same curtain. */
+  setSpine(points) {
+    this.pts = points;
+    this.touched = performance.now() / 1000;
+
+    // Cumulative arc fraction per spine point, used to taper the ends so a curtain
+    // dissolves into the sky instead of stopping at a hard vertical edge.
+    this.frac = [0];
+    let total = 0;
+    for (let i = 1; i < points.length; i++) {
+      // Measured in CSS pixels, so the end taper covers the same visible distance on a
+      // wide window as a tall one instead of stretching with the aspect ratio.
+      total += Math.hypot((points[i].x - points[i - 1].x) * W, (points[i].y - points[i - 1].y) * H);
+      this.frac.push(total);
+    }
+    if (total > 0) for (let i = 0; i < this.frac.length; i++) this.frac[i] /= total;
+
+    // Spine extremes, so the lake knows where the hem sits and the compositor knows
+    // which band of the buffer actually holds anything.
+    // Seeded from a real point, not from 0 and 1: constants would clamp the extremes
+    // rather than report them, and auto curtains already run slightly above y = 0.
+    this.maxY = points.reduce((m, p) => Math.max(m, p.y), points[0].y);
+    this.minY = points.reduce((m, p) => Math.min(m, p.y), points[0].y);
+  }
+
+  /** The stripe sprite bakes in energy, so it is only rebuilt when energy really moves. */
+  setEnergy(e) {
+    if (Math.abs(e - this.energy) < 0.06) return;
+    this.energy = e;
+    this.stripe = makeStripe(this.pal, e);
+  }
+
+  step(dt) {
+    this.opacity = this.dying
+      ? Math.max(0, this.opacity - dt * 0.28 * this.fade)
+      : Math.min(1, this.opacity + dt * 1.6);
+  }
+
+  get dead() { return this.dying && this.opacity <= 0.001; }
+
+  /** Sparks are a response to a stroke landing, not a permanent fountain along its path.
+   *  Emission decays once the spine stops changing, settling to a faint residual shimmer. */
+  get emitScale() {
+    const settled = performance.now() / 1000 - this.touched;
+    return lerp(1, 0.08, smooth(clamp(settled / 5, 0, 1)));
+  }
+
+  draw(g, time, breath) {
+    if (this.opacity < 0.01) return;
+    const sx = aur.width, sy = aur.height;
+    const hz = (horizon - HEM_CLEAR) * aurScale;
+    // Spacing scales with the buffer, so the sky gets about the same number of striations
+    // across it at any width. A fixed spacing is a fixed number of CSS pixels, which is a
+    // far larger share of a phone screen than a desktop one and reads as chunky blocks.
+    const step = Math.max(2.5, sx / 120);
+    g.globalCompositeOperation = 'lighter';
+
+    // Drift is measured from this curtain's own birth, not from page load, and it
+    // saturates. Against absolute uptime a curtain slides off frame within a minute and
+    // a late stroke lands off screen entirely.
+    const slide = clamp(this.drift * (time - this.created) * 0.6, -70, 70);
+
+    // Walk the spine in aurora-buffer pixels (aurScale of CSS, no dpr), one column per step.
+    let acc = 0;
+    for (let i = 1; i < this.pts.length; i++) {
+      const a = this.pts[i - 1], b = this.pts[i];
+      const ax = a.x * sx, ay = a.y * sy, bx = b.x * sx, by = b.y * sy;
+      const seg = Math.hypot(bx - ax, by - ay);
+      if (seg < 0.001) continue;
+      for (let d = acc; d < seg; d += step) {
+        const t = d / seg;
+        const x = lerp(ax, bx, t);
+        const y = Math.min(lerp(ay, by, t), hz);
+        const u = this.seed + (i + t) * 0.9;
+
+        const sway = (noise(u * 0.12 + time * 0.11, 2) - 0.5) * 26 + slide;
+        const rise = (noise(u * 0.07 + time * 0.06, 2) - 0.5) * RISE_MAX + Math.sin(time * 0.13) * this.bob;
+        const h = this.height * sy * lerp(0.45, HEIGHT_MAX, noise(u * 0.16 + time * 0.19, 3)) * breath;
+        // Two ray frequencies: wide bands of brightness with fine striations inside them.
+        const band = noise(u * 0.11 + time * 0.09, 2);
+        const fine = noise(u * 0.62 + time * 0.7, 2);
+        const ray = Math.pow(band * 0.55 + fine * 0.45, 2.1);
+        const f = lerp(this.frac[i - 1], this.frac[i], t);
+        const taper = smooth(clamp(Math.min(f, 1 - f) / 0.14, 0, 1));
+        const alpha = clamp((0.07 + ray * 0.95) * this.opacity * taper, 0, 1);
+        if (alpha < 0.012) continue;
+
+        const w = step * lerp(1, 2, ray);
+        g.globalAlpha = alpha;
+        g.drawImage(this.stripe, x + sway - w / 2, y + rise - h, w, h);
+      }
+      acc = (acc - seg) % step;
+      if (acc < 0) acc += step;
+    }
+    g.globalAlpha = 1;
+  }
+
+  /** A point near the curtain hem, used to spawn sparks. */
+  sampleHem() {
+    const i = 1 + ((Math.random() * (this.pts.length - 1)) | 0);
+    const a = this.pts[i - 1], b = this.pts[i];
+    const t = Math.random();
+    return { x: lerp(a.x, b.x, t) * W, y: Math.min(lerp(a.y, b.y, t) * H, horizon - HEM_CLEAR) };
+  }
+}
+
+const ribbons = [];
+const MAX_RIBBONS = 6;
+
+// Frame-time governor. Curtain fill rate is the dominant cost, so on a machine that
+// cannot keep up, carrying fewer curtains is a better trade than a stuttering sky.
+// Full quality until it actually stutters, and it climbs back when there is headroom.
+let ribbonCap = MAX_RIBBONS;
+let smoothMs = 16, governorCooldown = 1.5;
+
+function governor(rawMs, dt) {
+  smoothMs += (clamp(rawMs, 4, 200) - smoothMs) * 0.06;
+  governorCooldown -= dt;
+  if (governorCooldown > 0) return;
+  if (smoothMs > 26 && ribbonCap > 3) { ribbonCap--; governorCooldown = 2; }
+  else if (smoothMs < 20 && ribbonCap < MAX_RIBBONS) { ribbonCap++; governorCooldown = 3; }
+  enforceCap();
+}
+
+/** Enforced every frame rather than only when a curtain is added, or a cap cut while the
+ *  sky sits idle would never take effect. */
+function enforceCap() {
+  const budget = Math.max(1, ribbonCap - (live ? 1 : 0));
+
+  // The budget governs curtains still alive. Retiring the oldest starts a fade rather than
+  // removing it, and an ordinary eviction is allowed to fade at its own pace.
+  const alive = ribbons.filter(r => !r.dying && r !== live);
+  let over = alive.length - budget;
+  for (const r of alive) {
+    if (over-- <= 0) break;
+    r.dying = true;
+  }
+
+  // A fading curtain still draws every column at full geometry, since lowering its alpha
+  // does not lower its fill cost. So fades get hurried when they are genuinely piling up,
+  // by an amount set from the excess. Treating every dying curtain as over budget instead
+  // ratcheted each normal eviction to the maximum rate within about three frames, which
+  // turned the 3.6s fade into a 0.9s snap.
+  const drawn = ribbons.filter(r => r.opacity > 0.01);
+  if (drawn.length > ribbonCap + 2) {
+    const rush = clamp(1 + (drawn.length - ribbonCap) * 0.5, 1, 4);
+    for (const r of drawn) if (r.dying) r.fade = Math.max(r.fade, rush);
+  }
+}
+
+function addRibbon(r) {
+  ribbons.push(r);
+  enforceCap();
+}
+
+/* ------------------------------------------------------------------- sparks */
+
+const sparks = [];
+
+// Pre-baked glow sprites, one per hue bucket. Building a radial gradient per spark per
+// frame was costing more than drawing them.
+const SPARK_BUCKETS = 18;
+const SPARK_R = 24;
+const sparkSprites = [];
+for (let i = 0; i < SPARK_BUCKETS; i++) {
+  const c = document.createElement('canvas');
+  c.width = c.height = SPARK_R * 2;
+  const g = c.getContext('2d');
+  const hue = (i + 0.5) * (360 / SPARK_BUCKETS);
+  const grad = g.createRadialGradient(SPARK_R, SPARK_R, 0, SPARK_R, SPARK_R, SPARK_R);
+  grad.addColorStop(0, `hsla(${hue}, 100%, 92%, 1)`);
+  grad.addColorStop(0.3, `hsla(${hue}, 100%, 72%, 0.4)`);
+  grad.addColorStop(1, `hsla(${hue}, 100%, 60%, 0)`);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, SPARK_R * 2, SPARK_R * 2);
+  sparkSprites.push(c);
+}
+
+// A cross flare for the brightest stars, likewise baked rather than rebuilt per frame.
+const flare = document.createElement('canvas');
+{
+  const S = 64;
+  flare.width = flare.height = S;
+  const g = flare.getContext('2d');
+  for (const [x, y, w, h] of [[0, S / 2 - 0.5, S, 1], [S / 2 - 0.5, 0, 1, S]]) {
+    const grad = w > h
+      ? g.createLinearGradient(0, 0, S, 0)
+      : g.createLinearGradient(0, 0, 0, S);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(x, y, w, h);
+  }
+}
+
+// dt is clamped, so on a stuttering frame sparks age slower than wall-clock: they live
+// longer, pile up, and slow the frame further. The cap breaks that feedback loop.
+const MAX_SPARKS = 260;
+
+function spawnSpark(x, y, opts = {}) {
+  if (sparks.length >= MAX_SPARKS) return;
+  const hue = opts.hue ?? rand(120, 200);
+  sparks.push({
+    x, y,
+    vx: opts.vx ?? rand(-14, 14),
+    vy: opts.vy ?? rand(-34, -8),
+    life: 1,
+    decay: opts.decay ?? rand(0.16, 0.4),
+    size: opts.size ?? rand(0.8, 2.4),
+    sprite: sparkSprites[(((hue % 360) + 360) % 360) / 360 * SPARK_BUCKETS | 0],
+    twinkle: Math.random() * TAU
+  });
+}
+
+function burst(x, y, n = 26) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU;
+    const sp = rand(20, 150);
+    spawnSpark(x, y, {
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp * 0.7 - 20,
+      hue: rand(100, 320),
+      size: rand(1, 3),
+      decay: rand(0.5, 1.3)
+    });
+  }
+}
+
+/* ------------------------------------------------------- shooting stars      */
+
+const meteors = [];
+let nextMeteor = 3;
+let burstLeft = 0, burstNext = 0;
+
+// Meteors in a shower are grains from one debris stream on parallel paths. A radiant
+// inside the visible sky fans the streaks through every angle, which reads as random
+// rather than as one shower, so every meteor takes the same fixed direction: the limiting
+// case of a radiant far outside the field of view. Top-left to bottom-right, and shallow
+// enough to read as a streak across the sky rather than something falling.
+const STREAM_DIR = 0.42;
+const streamSpeed = rand(520, 820);
+
+function spawnMeteor() {
+  // Most meteors are faint and a few are bright, so magnitude is biased low. One value
+  // drives length, thickness and brightness together, which reads as objects of
+  // different sizes rather than one streak drawn at different scales.
+  let mag = Math.pow(Math.random(), 1.8);
+  if (Math.random() < 0.1) mag = rand(0.85, 1);
+
+  const speed = streamSpeed * rand(0.7, 1.35);
+
+  // Enter from the upper left with room to cross, rather than appearing next to the
+  // corner they are already heading for.
+  const x = rand(-0.3, 0.6) * W;
+  const y = rand(-0.15, 0.45) * horizon;
+
+  meteors.push({
+    x, y,
+    vx: Math.cos(STREAM_DIR) * speed,
+    vy: Math.sin(STREAM_DIR) * speed,
+    life: 1,
+    mag,
+    len: lerp(55, 235, mag) * rand(0.85, 1.15),
+    width: lerp(0.9, 3.4, mag)
+  });
+}
+
+/* ------------------------------------------------------------------ drawing */
+
+function drawStars(time) {
+  for (const s of stars) {
+    const y = s.y * horizon;
+    const tw = 0.55 + 0.45 * Math.sin(time * s.speed + s.phase);
+    const a = clamp(s.base * tw, 0, 1);
+    const x = s.x * W;
+    ctx.globalAlpha = a;
+    if (s.bright) {
+      ctx.fillStyle = `hsl(${s.hue}, 70%, 92%)`;
+      ctx.beginPath();
+      ctx.arc(x, y, s.r, 0, TAU);
+      ctx.fill();
+      // A soft cross flare sells the brightest few as actual stars.
+      const f = s.r * 7 * tw;
+      ctx.globalAlpha = a * 0.5;
+      ctx.drawImage(flare, x - f, y - f, f * 2, f * 2);
+    } else {
+      // A sub-pixel rect reads the same as a circle at this size and costs far less
+      // than building and filling a path per star.
+      ctx.fillStyle = '#e8f4ff';
+      ctx.fillRect(x - s.r, y - s.r, s.r * 2, s.r * 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawLake(time, skyEmpty) {
+  const depth = H - horizon;
+  if (depth <= 0) return;
+
+  // Reflected shoreline first, from the baked layer. Light on water sits on top of it,
+  // so this has to go down before the aurora.
+  drawLayer(reflBake);
+
+  // The reflected aurora. A true mirror would throw the curtains below the frame, so
+  // the whole sky is flipped and squashed into the lake depth: one continuous draw,
+  // because sampling it in slices bands the gradient into visible stripes. Offset copies
+  // stand in for the horizontal smear of light on moving water, and sourcing them from
+  // the pre-blurred glow buffer keeps two of them enough.
+  //
+  // Skipped outright on an empty sky: these are two full-lake additive passes, and with
+  // nothing in the buffer they compose transparent black at full cost.
+  if (!skyEmpty) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    // Only the sky down to the lowest curtain hem is reflected. Mapping the whole sky
+    // height in leaves a dead gap below the shore, since the empty band above the
+    // ridges lands exactly where the reflection should be brightest.
+    const hem = ribbons.reduce((m, r) => Math.max(m, r.maxY * H), horizon * REFLECT_FLOOR);
+    const srcH = glow.height * Math.min(hem + 30, horizon) / H;
+    ctx.translate(0, horizon);
+    ctx.scale(1, -1);
+    ctx.globalAlpha = 0.34;
+    for (const off of [-6, 6]) {
+      ctx.drawImage(
+        glow, 0, 0, glow.width, srcH,
+        off + Math.sin(time * 0.5) * 3, -depth + off * 0.3, W, depth
+      );
+    }
+    ctx.restore();
+  }
+
+  // Low mist sitting on the water, which is what separates shore from lake.
+  const mist = ctx.createLinearGradient(0, horizon - 26, 0, horizon + 44);
+  mist.addColorStop(0, 'rgba(150, 205, 230, 0)');
+  mist.addColorStop(0.4, `rgba(150, 205, 230, ${0.10 + 0.03 * Math.sin(time * 0.4)})`);
+  mist.addColorStop(1, 'rgba(150, 205, 230, 0)');
+  ctx.fillStyle = mist;
+  ctx.fillRect(0, horizon - 26, W, 70);
+
+  // Sink the water: cool, dark, and hazier as it comes toward the near shore.
+  ctx.fillStyle = waterGradient;
+  ctx.fillRect(0, horizon, W, H - horizon);
+
+  // Ripple troughs: shallow dark sine lines, closer together toward the far shore.
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = 'rgba(0, 2, 8, 0.5)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 26; i++) {
+    const k = Math.pow(i / 26, 1.7);
+    const y = horizon + 4 + k * depth;
+    const amp = 1.5 + k * 5;
+    ctx.globalAlpha = 0.28 + k * 0.3;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 32) {
+      ctx.lineTo(x, y + Math.sin(x * 0.012 + time * 0.7 + i) * amp + Math.sin(x * 0.031 - time * 1.1) * amp * 0.4);
+    }
+    ctx.stroke();
+  }
+
+  // Specular glints on the surface.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 70; i++) {
+    const k = Math.pow(noise(i * 3.1, 2), 1.5);
+    const y = horizon + k * depth;
+    const x = (noise(i * 7.7 + time * 0.05, 2) * 1.2 - 0.1) * W;
+    const a = 0.10 + 0.28 * Math.abs(Math.sin(time * 1.3 + i));
+    ctx.globalAlpha = a * (1 - k * 0.6);
+    ctx.fillStyle = '#cfeaff';
+    ctx.fillRect(x, y, lerp(6, 30, k), 1);
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/** An offscreen layer covering CSS rows top..top+h, drawable in absolute page coords. */
+function makeLayer(top, h) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(W * dpr));
+  c.height = Math.max(1, Math.ceil(h * dpr));
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, -top * dpr);
+  return { canvas: c, ctx: g, top, h };
+}
+
+const REFLECT = 0.38;
+
+// How far above the waterline a curtain's hem stops, in CSS pixels. Used by the draw loop
+// in buffer pixels and by spark emission in CSS pixels, so it lives in one place: written
+// out twice it silently drifts apart as aurScale changes.
+const HEM_CLEAR = 12;
+
+// Fraction of the sky the lake reflects when there are no curtains to measure against.
+const REFLECT_FLOOR = 0.5;
+
+/** The ridges never move, so they are drawn once per resize instead of once per frame. */
+function bakeRidges() {
+  const crest = ridges.reduce((m, r) => Math.min(m, r.pts.reduce((n, p) => Math.min(n, p.y), H)), H);
+  ridgeBake = makeLayer(crest - 24, horizon + 2 - (crest - 24));
+  reflBake = makeLayer(horizon, (horizon - crest) * REFLECT + 3);
+
+  for (const r of ridges) {
+    const g = ridgeBake.ctx;
+    g.beginPath();
+    g.moveTo(0, horizon + 1);
+    for (const p of r.pts) g.lineTo(p.x, p.y);
+    g.lineTo(W, horizon + 1);
+    g.closePath();
+    g.fillStyle = r.fill;
+    g.fill();
+
+    // Shade each slope toward its base so the ridges don't read as flat paper cutouts.
+    const shade = g.createLinearGradient(0, H * 0.55, 0, horizon);
+    shade.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    shade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+    g.fillStyle = shade;
+    g.fill();
+
+    // Rim light along the crest, as if the aurora were behind the ridge. Blurred,
+    // because a crisp hairline is what makes layered ridges read as paper cutouts.
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    // Kept faint: the rim does not know whether there is aurora behind that stretch of
+    // ridge, and at full strength it reads as a contour line drawn around a dark hill.
+    g.strokeStyle = `rgba(150, 255, 220, ${r.glow * 0.13})`;
+    g.shadowColor = 'rgba(140, 255, 215, 0.5)';
+    g.shadowBlur = 14;
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.moveTo(r.pts[0].x, r.pts[0].y);
+    for (const p of r.pts) g.lineTo(p.x, p.y);
+    g.stroke();
+    g.restore();
+
+    // Reflected shoreline: the same ridge mirrored about the waterline, foreshortened.
+    const w = reflBake.ctx;
+    w.beginPath();
+    w.moveTo(0, horizon);
+    for (const p of r.pts) w.lineTo(p.x, horizon + (horizon - p.y) * REFLECT);
+    w.lineTo(W, horizon);
+    w.closePath();
+    w.fillStyle = r.fill;
+    w.globalAlpha = 0.65;
+    w.fill();
+    w.globalAlpha = 1;
+  }
+}
+
+function drawLayer(layer) {
+  ctx.drawImage(layer.canvas, 0, layer.top, W, layer.h);
+}
+
+function drawSparks(time) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of sparks) {
+    const tw = 0.4 + 0.6 * Math.abs(Math.sin(time * 6 + s.twinkle));
+    ctx.globalAlpha = clamp(s.life, 0, 1) * tw;
+    const r = s.size * (0.5 + tw * 0.5) * 2.6;
+    ctx.drawImage(s.sprite, s.x - r, s.y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawMeteors() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of meteors) {
+    const n = Math.hypot(m.vx, m.vy);
+    const tx = m.x - m.vx / n * m.len, ty = m.y - m.vy / n * m.len;
+    const a = m.life * (0.3 + 0.7 * m.mag);
+    const g = ctx.createLinearGradient(m.x, m.y, tx, ty);
+    g.addColorStop(0, `rgba(255,255,255,${0.95 * a})`);
+    g.addColorStop(0.25, `rgba(180,235,255,${0.42 * a})`);
+    g.addColorStop(1, 'rgba(140,200,255,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = m.width;
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------- profiling */
+
+// Per-section frame timings, idle until something calls startProfile().
+const prof = { on: false, marks: {}, frames: 0, t: 0 };
+
+function tick(name) {
+  if (!prof.on) return;
+  const n = performance.now();
+  prof.marks[name] = (prof.marks[name] || 0) + (n - prof.t);
+  prof.t = n;
+}
+
+/* --------------------------------------------------------------------- loop */
+
+let last = performance.now() / 1000;
+let breathPhase = 0;
+let glowClean = false;
+
+function frame(now) {
+  const time = now / 1000;
+  const raw = time - last;
+  const dt = Math.min(0.05, raw);
+  last = time;
+  // A backgrounded tab or a long stall is not a slow frame. Feeding the real gap in
+  // costs a curtain on every tab restore.
+  if (raw < 0.25) governor(raw * 1000, dt);
+
+  if (prof.on) { prof.frames++; prof.t = performance.now(); }
+
+  breathPhase += dt * 0.22;
+  const breath = 0.9 + 0.14 * Math.sin(breathPhase) + 0.06 * Math.sin(breathPhase * 2.7);
+
+  // Aurora buffer.
+  actx.setTransform(1, 0, 0, 1, 0, 0);
+  actx.clearRect(0, 0, aur.width, aur.height);
+  for (const r of ribbons) {
+    r.step(dt);
+    r.draw(actx, time, breath);
+  }
+  actx.globalCompositeOperation = 'source-over';
+
+  // Blurred copy, used by both the bloom and the lake. An empty sky gets one final clear
+  // and is then left alone, so it can neither hold a stale frame's curtains nor cost
+  // anything to maintain while there is nothing to show.
+  const skyEmpty = !ribbons.some(r => r.opacity >= 0.02);
+  if (!skyEmpty || !glowClean) {
+    gctx.setTransform(1, 0, 0, 1, 0, 0);
+    gctx.clearRect(0, 0, glow.width, glow.height);
+    gctx.drawImage(aur, 0, 0, glow.width, glow.height);
+    glowClean = skyEmpty;
+  }
+  tick('curtains');
+
+  // Sky.
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, W, horizon);
+  ctx.fillStyle = '#02040a';
+  ctx.fillRect(0, horizon, W, H - horizon);
+  tick('sky');
+
+  drawStars(time);
+  tick('stars');
+  drawMeteors();
+  tick('meteors');
+
+  // Composite the aurora over only the band that holds curtains, then bloom it from the
+  // quarter-res copy. Compositing the full viewport spends most of its fill rate on
+  // empty sky and on lake rows that later get painted over.
+  let bandTop = horizon, bandBot = 0;
+  for (const r of ribbons) {
+    if (r.opacity < 0.02) continue;
+    bandTop = Math.min(bandTop, r.minY * H - r.height * H * HEIGHT_MAX * BREATH_MAX - RISE_MAX / aurScale - 20);
+    bandBot = Math.max(bandBot, r.maxY * H + 30);
+  }
+  bandTop = clamp(bandTop, 0, horizon);
+  bandBot = clamp(bandBot, 0, horizon);
+
+  if (bandBot > bandTop) {
+    const bh = bandBot - bandTop;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(aur, 0, bandTop * aurScale, aur.width, bh * aurScale, 0, bandTop, W, bh);
+
+    // The glow is drawn at 1:1 with the crisp pass, never scaled. Scaling displaces every
+    // feature by the expansion, and the hem sits exactly on the band's bottom edge where
+    // that displacement is largest: it appears as a second, blurrier curtain below the
+    // real one. Spread comes from the buffer's low resolution, and the offsets are
+    // horizontal only, so nothing can shift vertically into a doubled row.
+    ctx.globalAlpha = 0.3;
+    for (const ox of [0, -11, 11]) {
+      ctx.drawImage(
+        glow, 0, bandTop * glowScale, glow.width, bh * glowScale,
+        ox, bandTop, W, bh
+      );
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  tick('bloom');
+
+  // Sparks drift up out of the curtain hems.
+  for (const r of ribbons) {
+    if (r.dying || r.opacity < 0.5) continue;
+    if (Math.random() < dt * 5 * r.energy * r.emitScale) {
+      const p = r.sampleHem();
+      spawnSpark(p.x + rand(-10, 10), p.y, {
+        hue: r.pal.core[0] + rand(-25, 45),
+        vy: rand(-46, -14),
+        vx: rand(-10, 10),
+        decay: rand(0.25, 0.6),
+        size: rand(0.5, 1.4)
+      });
+    }
+  }
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.vy += 8 * dt;
+    s.vx *= 1 - dt * 0.6;
+    s.life -= s.decay * dt;
+    // Nothing below the waterline for a spark to be in front of.
+    if (s.life <= 0 || s.y > horizon) sparks.splice(i, 1);
+  }
+
+  // Sparks are sky, so they go down before the landscape does. Drawn after it, they
+  // sit on top of the mountains and the water and break the illusion.
+  drawSparks(time);
+  tick('sparks');
+
+  drawLake(time, skyEmpty);
+  tick('lake');
+  drawLayer(ridgeBake);
+  tick('ridges');
+
+  for (let i = meteors.length - 1; i >= 0; i--) {
+    const m = meteors[i];
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+    m.life -= dt * 0.55;
+    // Brighter meteors shed more, and none of it below the ridge line.
+    if (m.y < horizon * 0.9 && Math.random() < dt * 14 * m.mag) {
+      spawnSpark(m.x, m.y, { hue: 200, vx: rand(-8, 8), vy: rand(-6, 12), decay: 1.6, size: rand(0.6, 1.2) });
+    }
+    if (m.life <= 0 || m.x < -400 || m.x > W + 400 || m.y > horizon || m.y < -400) meteors.splice(i, 1);
+  }
+
+  // Showers arrive in clumps as often as singly, spaced by their own timer rather than
+  // a pile of one-shot timeouts.
+  nextMeteor -= dt;
+  if (nextMeteor <= 0) {
+    spawnMeteor();
+    if (Math.random() < 0.3) burstLeft = 1 + (Math.random() * 2 | 0);
+    nextMeteor = rand(6, 18);
+  }
+  if (burstLeft > 0) {
+    burstNext -= dt;
+    if (burstNext <= 0) { spawnMeteor(); burstLeft--; burstNext = rand(0.15, 0.6); }
+  }
+
+  for (let i = ribbons.length - 1; i >= 0; i--) if (ribbons[i].dead) ribbons.splice(i, 1);
+
+  Sound.setPad(clamp(ribbons.filter(r => !r.dying).length / 5, 0, 1), auto);
+
+  autoTick(dt);
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------------- strokes */
+
+// How far apart spine points sit, in CSS pixels. Everything the draw loop varies per spine
+// point (sway, height, the ray bands) takes its wavelength from this.
+//
+// Deliberately between the two extremes. In normalized units the spacing works out at ~17px
+// on a desktop but ~5px on a phone, compressing every one of those features nearly
+// fourfold. A flat pixel value fixes that but leaves a phone curtain with barely a dozen
+// spine points, so the shapes go coarse and the end tapers turn into hard edges. Scaling
+// sub-linearly keeps a small screen a little tighter than a large one, which is about
+// right, without crushing it.
+const spineStep = () => clamp(W / 90, 9, 18);
+
+/** Even-spaced Catmull-Rom resample, so a jittery pointer path becomes a smooth spine. */
+function smoothPath(raw) {
+  if (raw.length < 2) return raw.slice();
+  const p = raw.slice();
+  p.unshift(p[0]);
+  p.push(p[p.length - 1]);
+  const dense = [];
+  for (let i = 1; i < p.length - 2; i++) {
+    const [p0, p1, p2, p3] = [p[i - 1], p[i], p[i + 1], p[i + 2]];
+    const segs = 8;
+    for (let s = 0; s < segs; s++) {
+      const t = s / segs, t2 = t * t, t3 = t2 * t;
+      dense.push({
+        x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+      });
+    }
+  }
+  dense.push(raw[raw.length - 1]);
+
+  const out = [dense[0]];
+  const step = spineStep();
+  let acc = 0;
+  for (let i = 1; i < dense.length; i++) {
+    acc += Math.hypot((dense[i].x - dense[i - 1].x) * W, (dense[i].y - dense[i - 1].y) * H);
+    if (acc >= step) { out.push(dense[i]); acc = 0; }
+  }
+  if (out.length < 2) out.push(dense[dense.length - 1]);
+  return out;
+}
+
+let drawing = false, raw = [], travel = 0, lastNote = 0, peakSpeed = 0, lastPt = null;
+let live = null;
+
+const MAX_STROKE_PTS = 600;
+
+function toNorm(e) {
+  return { x: e.clientX / W, y: e.clientY / H };
+}
+
+/** Speed drives height and brightness, and it keeps rising as the stroke continues. */
+function strokeShape() {
+  return {
+    energy: clamp(0.75 + peakSpeed * 0.35, 0.75, 1.5),
+    height: clamp(0.2 + peakSpeed * 0.09, 0.2, 0.46)
+  };
+}
+
+function beginStroke(e) {
+  drawing = true;
+  raw = [toNorm(e)];
+  lastPt = { x: e.clientX, y: e.clientY, t: performance.now() };
+  travel = 0;
+  peakSpeed = 0;
+  live = null;
+  hideTitle();
+  chime(e.clientY, 0.85);
+  burst(e.clientX, e.clientY, 10);
+}
+
+function extendStroke(e) {
+  const now = performance.now();
+  const p = { x: e.clientX, y: e.clientY };
+  const d = Math.hypot(p.x - lastPt.x, p.y - lastPt.y);
+  const speed = d / Math.max(8, now - lastPt.t);
+  peakSpeed = Math.max(peakSpeed, speed);
+  lastPt = { ...p, t: now };
+
+  // Thinning the raw path keeps the per-move spine rebuild cheap and costs no fidelity,
+  // since the spine gets smoothed anyway.
+  const n = toNorm(e);
+  const prev = raw[raw.length - 1];
+  const moved = Math.hypot((n.x - prev.x) * W, (n.y - prev.y) * H) > 3;
+  if (moved) raw.push(n);
+
+  travel += d;
+  for (let i = 0; i < 2; i++) {
+    spawnSpark(p.x + rand(-6, 6), p.y + rand(-6, 6), {
+      hue: rand(120, 210), decay: rand(0.8, 1.8), size: rand(0.5, 1.3), vy: rand(-30, 0)
+    });
+  }
+  if (travel > 78 && now - lastNote > 95) {
+    travel = 0;
+    lastNote = now;
+    chime(p.y, 0.55);
+  }
+
+  // A marathon scribble becomes a chain of curtains instead of one unbounded spine,
+  // which would otherwise make every rebuild slower than the last.
+  if (raw.length >= MAX_STROKE_PTS) {
+    live = null;
+    raw = raw.slice(-2);
+  }
+
+  // clear() retires every curtain including this one; chain a fresh one rather than
+  // spending the rest of the drag writing to something nobody draws.
+  if (live && live.dying) { live = null; raw = raw.slice(-2); }
+
+  // The curtain appears under the cursor and grows with the stroke, rather than only
+  // materialising on release. Gated on a new point, so a high-poll-rate pointer cannot
+  // force a spine rebuild several times per frame.
+  if (!moved || raw.length < 3) return;
+  const shape = strokeShape();
+  if (!live) {
+    live = new Ribbon(smoothPath(raw), shape);
+    addRibbon(live);
+  } else {
+    live.setSpine(smoothPath(raw));
+    live.setEnergy(shape.energy);
+    live.height = shape.height;
+  }
+}
+
+function endStroke() {
+  activeId = null;
+  if (!drawing) return;
+  drawing = false;
+  live = null;
+  raw = [];
+}
+
+function chime(clientY, vel) {
+  const h = clamp(1 - clientY / horizon, 0, 1);
+  Sound.note(h, vel);
+}
+
+// One pointer owns the stroke. Without this a second finger restarts it mid-drag and
+// both pointers then feed the same spine, which zigzags between them.
+let activeId = null;
+
+canvas.addEventListener('pointerdown', e => {
+  if (activeId !== null) return;
+  activeId = e.pointerId;
+  canvas.setPointerCapture(e.pointerId);
+  beginStroke(e);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId !== activeId || !drawing) return;
+  // A release that happened without an event reaching us still ends the stroke: the
+  // alternative is a stroke that never ends and keeps extending on every later move.
+  if (e.buttons === 0) endStroke();
+  else extendStroke(e);
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  canvas.addEventListener(ev, e => { if (e.pointerId === activeId) endStroke(); });
+}
+
+// The audio device is only ever opened from a real gesture. Capture phase, so this runs
+// before the canvas handler on the same event: that handler fires the opening chime, and
+// on the bubble phase it would still be locked and lose it.
+for (const ev of ['pointerdown', 'keydown']) {
+  window.addEventListener(ev, () => Sound.unlock(), { once: true, capture: true });
+}
+
+// Losing the window or the tab mid-drag fires no pointer event at all.
+window.addEventListener('blur', endStroke);
+document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
+
+/* --------------------------------------------------------------- self-playing */
+
+let auto = true, nextAuto = 0.4;
+
+/** A procedural stroke: a long arc with a couple of lazy bends. */
+function autoRibbon(loud = false) {
+  const y0 = rand(0.14, 0.52);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const x0 = dir > 0 ? rand(-0.2, 0.35) : rand(0.65, 1.2);
+  const span = rand(0.45, 1.25) * dir;
+  const bend = rand(-0.14, 0.14);
+  const wig = rand(0.02, 0.07);
+  // The undulation gets a wavelength in pixels rather than a cycle count across the span,
+  // so a narrow screen shows fewer, broader waves instead of the same waves crushed
+  // together. Kept a little tighter on small screens, but nowhere near proportionally.
+  const spanPx = Math.abs(span) * W;
+  const wigFreq = clamp(spanPx / rand(340, 620), 1, 4);
+  const phase = Math.random() * TAU;
+  const pts = [];
+  for (let i = 0; i <= 46; i++) {
+    const t = i / 46;
+    pts.push({
+      x: x0 + span * t,
+      y: y0 + bend * Math.sin(t * Math.PI) + wig * Math.sin(t * TAU * wigFreq + phase)
+    });
+  }
+  // Through the same resampler as a hand-drawn stroke, so its spine is spaced in pixels
+  // too rather than in 46 slices of however wide the window happens to be.
+  addRibbon(new Ribbon(smoothPath(pts), {
+    energy: loud ? rand(1.1, 1.5) : rand(0.6, 1.0),
+    height: loud ? rand(0.26, 0.44) : rand(0.14, 0.3)
+  }));
+
+  // Sound the arc as an arpeggio rather than a chord.
+  const notes = loud ? 7 : 4;
+  for (let i = 0; i < notes; i++) {
+    const t = (i + 0.5) / notes;
+    const y = (y0 + bend * Math.sin(t * Math.PI)) * H;
+    setTimeout(() => chime(y, loud ? 0.5 : 0.32), i * rand(170, 420));
+  }
+}
+
+function autoTick(dt) {
+  if (!auto) return;
+  nextAuto -= dt;
+  if (nextAuto <= 0) {
+    autoRibbon();
+    nextAuto = rand(5, 11);
+  }
+}
+
+function storm() {
+  hideTitle();
+  for (let i = 0; i < 6; i++) setTimeout(() => autoRibbon(true), i * 320);
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      spawnMeteor();
+      burst(rand(0.15, 0.85) * W, rand(0.1, 0.5) * H, 40);
+    }, i * 500 + 200);
+  }
+}
+
+/* ----------------------------------------------------------------------- hud */
+
+const titleEl = document.getElementById('title');
+const hud = document.getElementById('hud');
+let titleGone = false;
+
+function hideTitle() {
+  if (titleGone) return;
+  titleGone = true;
+  titleEl.classList.add('gone');
+}
+setTimeout(hideTitle, 7000);
+
+const btnSound = document.getElementById('btn-sound');
+const btnAuto = document.getElementById('btn-auto');
+
+btnSound.addEventListener('click', () => {
+  btnSound.setAttribute('aria-pressed', String(Sound.toggle()));
+});
+btnAuto.addEventListener('click', () => {
+  auto = !auto;
+  nextAuto = 0.5;
+  btnAuto.setAttribute('aria-pressed', String(auto));
+});
+function clearSky() {
+  for (const r of ribbons) r.dying = true;
+}
+
+document.getElementById('btn-clear').addEventListener('click', clearSky);
+document.getElementById('btn-storm').addEventListener('click', storm);
+
+// The hud is bright while you play and fades back once the pointer rests. Only a hovering
+// pointer can signal rest, though: touch sends nothing at all between taps, so there the
+// hud would dim and never come back.
+//
+// Decided from the events actually arriving rather than from a media query. Only a mouse
+// or pen reports a move with no button held, and reading a query once at load also gets it
+// wrong in a browser's responsive mode, where the emulation can change under us.
+let hoverSeen = false;
+let idleTimer;
+
+function nudgeHud() {
+  hud.classList.remove('dim');
+  clearTimeout(idleTimer);
+  if (!hoverSeen) return;
+  idleTimer = setTimeout(() => hud.classList.add('dim'), 2600);
+}
+
+window.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'touch' && e.buttons === 0) hoverSeen = true;
+  nudgeHud();
+});
+window.addEventListener('pointerdown', e => {
+  // A touch anywhere revokes it: this is a touch session now, whatever moved before.
+  if (e.pointerType === 'touch') hoverSeen = false;
+  nudgeHud();
+});
+nudgeHud();
+
+window.addEventListener('keydown', e => {
+  // Never shadow a browser shortcut, and never swallow Space from a focused hud button,
+  // whose activation these bindings would otherwise cancel.
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target instanceof Element && e.target.closest('button')) return;
+
+  if (e.key === ' ') { e.preventDefault(); autoRibbon(true); hideTitle(); }
+  else if (e.key.toLowerCase() === 'c') clearSky();
+  else if (e.key.toLowerCase() === 'm') btnSound.click();
+  else if (e.key.toLowerCase() === 's') storm();
+});
+
+// Resize rebuilds the stars and re-bakes the ridge layers, so coalesce the burst of
+// events a window drag fires down to one rebuild per frame.
+let resizePending = false;
+window.addEventListener('resize', () => {
+  if (resizePending) return;
+  resizePending = true;
+  requestAnimationFrame(() => { resizePending = false; resize(); });
+});
+
+/* ---------------------------------------------------------------------- init */
+
+// Debug handle for automated testing, with access to the audio graph and frame timings.
+window.__aurora = {
+  Sound, ribbons, sparks, meteors, autoRibbon, storm, spawnMeteor, streamDir: STREAM_DIR,
+  get horizon() { return horizon; },
+  state: () => ({
+    drawing, rawLen: raw.length, live: !!live,
+    ribbons: ribbons.length, sparks: sparks.length, meteors: meteors.length, cap: ribbonCap
+  }),
+  startProfile() { prof.marks = {}; prof.frames = 0; prof.on = true; },
+  readProfile() {
+    prof.on = false;
+    const out = { frames: prof.frames, nRibbons: ribbons.length, nSparks: sparks.length, cap: ribbonCap };
+    let total = 0;
+    for (const k in prof.marks) {
+      out[k] = +(prof.marks[k] / prof.frames).toFixed(2);
+      total += prof.marks[k];
+    }
+    out.total = +(total / prof.frames).toFixed(2);
+    return out;
+  }
+};
+
+resize();
+// After first paint, so the graph is ready and warm before any swipe can ask for a note.
+setTimeout(() => Sound.prepare(), 400);
+// Seed the sky so there is already something breathing when the page opens.
+for (let i = 0; i < 3; i++) setTimeout(() => autoRibbon(), i * 900);
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

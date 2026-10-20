@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Playground</title>
+  <meta name="description"
+    content="Mini-projects Marlene Wanberg built with AI coding assistants to explore what's possible.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    /* Applies a theme saved by the footer's switch before the first paint,
+       so the page never flashes the other theme. The key is specific to this
+       site because every page on mwanberg.github.io shares one storage. */
+    try {
+      const theme = localStorage.getItem('ai-playground-theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch { }
+  </script>
+  <!-- icons -->
+  <link rel="icon" href="favicon.ico?v=5527d947" sizes="32x32">
+  <link rel="icon" href="favicon.svg?v=9356d9ef" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=b6b447d3">
+  <link rel="manifest" href="site.webmanifest?v=02307423">
+  <!-- /icons -->
+</head>
+
+<body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <!-- The universal access figure with an "x" badge in the corner. The
+       surface-colored ring around the badge separates it from the figure's
+       circle. -->
+    <symbol id="icon-a11y-off" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+      <circle cx="11" cy="6.2" r="1.7" fill="currentColor" />
+      <path d="M6.4 9.2h9.2M11 9.2v3.6l-2.5 4M11 12.8l2.5 4" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="18.5" cy="18.5" r="5.5" style="fill: var(--color-surface)" />
+      <circle cx="18.5" cy="18.5" r="4.4" fill="currentColor" />
+      <path d="M16.8 16.8l3.4 3.4M20.2 16.8l-3.4 3.4" fill="none" stroke-width="1.5" stroke-linecap="round"
+        style="stroke: var(--color-surface)" />
+    </symbol>
+    <!-- Theme switch icons: a sun, a crescent moon, and a monitor. -->
+    <symbol id="icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24">
+      <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round" />
+    </symbol>
+    <symbol id="icon-system" viewBox="0 0 24 24">
+      <rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+      <path d="M8 20h8M12 16v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </symbol>
+    <!-- An arrow leaving a box. -->
+    <symbol id="icon-external" viewBox="0 0 24 24">
+      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+  </svg>
+
+  <main class="page">
+    <header class="intro">
+      <h1>AI <span class="hl">Playground</span></h1>
+      <p>Here are mini-projects I've built with AI coding assistants to explore what's possible. Most of the code comes
+        from vibe coding. I described in natural language what I wanted to end up with, and the assistant wrote it.
+        Sometimes I guided it in different ways, such as telling it a good order to build things in, or asking for
+        changes.</p>
+      <p class="intro-disclaimer">These little projects are creative experiments. In creative work, I often get messy
+        and try unusual things. Unlike sites and tools that people need to use (which is what I normally build), these
+        aren't always polished.</p>
+      <p class="intro-legend">Projects marked with <svg role="img" aria-label="the accessibility symbol with an x badge">
+          <use href="#icon-a11y-off" />
+        </svg> aren't designed to be accessible so user beware.</p>
+    </header>
+
+    <ul class="gallery" role="list">
+      <li class="card">
+        <div class="card-main">
+          <h2 class="card-title"><a class="card-link" href="ui-theme-explorer/index.html">UI Theme Explorer<span
+                class="visually-hidden"> (not designed to be accessible)</span></a><span class="a11y-flag"
+              aria-hidden="true"><svg class="a11y-flag-icon">
+                <use href="#icon-a11y-off" />
+              </svg><span class="a11y-flag-tip"><span class="a11y-flag-tip-body">Not designed to be
+                  accessible</span></span></span></h2>
+          <img class="card-image" src="ui-theme-explorer/preview.png"
+            alt="The Reef theme: coral and teal rounded buttons and toggle switches with fish on them, on a rippling aqua background."
+            width="1280" height="800">
+          <p class="card-description">I asked Claude Opus 5.5 (high effort) for a set of interface components (buttons,
+            forms, cards, data tables, etc.) and then used natural language to essentially one-shot 14 different theme
+            variations. The themes include a calm SaaS look, a coral reef, and glam glitter. Each theme also has a dark
+            mode to explore. WARNING: might hurt your eyes.</p>
+        </div>
+      </li>
+
+      <li class="card">
+        <div class="card-main">
+          <h2 class="card-title"><a class="card-link" href="aurora/index.html">Aurora<span class="visually-hidden">
+                (not designed to be accessible)</span></a><span class="a11y-flag" aria-hidden="true"><svg
+                class="a11y-flag-icon">
+                <use href="#icon-a11y-off" />
+              </svg><span class="a11y-flag-tip"><span class="a11y-flag-tip-body">Not designed to be
+                  accessible</span></span></span></h2>
+          <img class="card-image" src="aurora/preview.png"
+            alt="Green and violet aurora curtains over dark mountains and a lake, with the title &quot;Aurora&quot; and the prompt &quot;Drag to paint the sky.&quot;"
+            width="1280" height="800">
+          <p class="card-description">An interactive musical night sky. Drag to paint curtains of aurora with chimes
+            playing as you go. An early exploration stemming from a late night request to Claude Opus 4.8 to "make me
+            something sparkly." Might be a little heavy in your browser.</p>
+        </div>
+      </li>
+    </ul>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <p>Created by Marlene Wanberg. My main website is <a href="https://www.slatehillinc.com/" target="_blank"
+          rel="noopener">slatehillinc.com<span class="visually-hidden"> (opens in a new tab)</span><svg
+            class="icon-external" aria-hidden="true">
+            <use href="#icon-external" />
+          </svg></a>.</p>
+      <div class="theme-switch" role="radiogroup" aria-label="Theme" hidden>
+        <div class="theme-switch-track">
+          <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="light"><svg
+              aria-hidden="true">
+              <use href="#icon-sun" />
+            </svg><span class="visually-hidden">Light</span></label>
+          <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="dark"><svg
+              aria-hidden="true">
+              <use href="#icon-moon" />
+            </svg><span class="visually-hidden">Dark</span></label>
+          <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="system"><svg
+              aria-hidden="true">
+              <use href="#icon-system" />
+            </svg><span class="visually-hidden">System</span></label>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* Escape hides a showing tooltip without moving focus or the pointer
+       (WCAG 1.4.13). The selector matches the conditions that show a tip in
+       styles.css, so only the showing one is dismissed. The tip can show
+       again once the pointer leaves the flag or focus leaves the link. */
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      for (const card of document.querySelectorAll('.card:has(.a11y-flag:hover, .card-link:focus-visible)')) {
+        card.dataset.tipDismissed = '';
+      }
+    });
+    for (const card of document.querySelectorAll('.card')) {
+      const reset = () => delete card.dataset.tipDismissed;
+      card.querySelector('.a11y-flag')?.addEventListener('pointerleave', reset);
+      card.querySelector('.card-link').addEventListener('blur', reset);
+    }
+
+    /* A tip is centered on its icon, so near a window edge it would run off
+       screen. When it shows, measure it and shift it back inside; the arrow
+       shifts the other way to stay over the icon. */
+    const EDGE = 8;
+    function keepOnScreen(tip) {
+      tip.style.setProperty('--tip-nudge', '0px');
+      const { left, right, width } = tip.getBoundingClientRect();
+      if (width === 0) return;
+      /* clientWidth excludes the scrollbar; innerWidth does not. */
+      const visible = document.documentElement.clientWidth;
+      let nudge = 0;
+      if (right > visible - EDGE) nudge = visible - EDGE - right;
+      if (left + nudge < EDGE) nudge = EDGE - left;
+      tip.style.setProperty('--tip-nudge', `${nudge}px`);
+    }
+    for (const card of document.querySelectorAll('.card:has(.a11y-flag-tip)')) {
+      const tip = card.querySelector('.a11y-flag-tip');
+      card.querySelector('.a11y-flag').addEventListener('pointerenter', () => keepOnScreen(tip));
+      card.querySelector('.card-link').addEventListener('focus', () => keepOnScreen(tip));
+    }
+
+    /* The footer's theme switch: Light and Dark set data-theme and save the
+       choice; System clears both, so the page follows the system again. The
+       script in <head> restores a saved choice on the next visit. Storage
+       can be unavailable (some private modes), and the switch still works
+       for the current page. */
+    const THEME_KEY = 'ai-playground-theme';
+    const themeSwitch = document.querySelector('.theme-switch');
+    const current = document.documentElement.dataset.theme ?? 'system';
+    for (const input of themeSwitch.querySelectorAll('input[name="theme"]')) {
+      input.checked = input.value === current;
+      input.addEventListener('change', () => {
+        const root = document.documentElement;
+        if (input.value === 'system') delete root.dataset.theme;
+        else root.dataset.theme = input.value;
+        try {
+          if (input.value === 'system') localStorage.removeItem(THEME_KEY);
+          else localStorage.setItem(THEME_KEY, input.value);
+        } catch { }
+      });
+    }
+    themeSwitch.hidden = false;
+
+    /* A [data-opens] button opens the dialog with that id as a modal. A click
+       whose target is the dialog itself came from the backdrop, and closes it
+       only if the press started there too, so a text selection dragged past
+       the paper's edge does not. */
+    for (const button of document.querySelectorAll('[data-opens]')) {
+      const dialog = document.getElementById(button.dataset.opens);
+      if (!dialog) {
+        console.error(`No dialog with id "${button.dataset.opens}"`);
+        continue;
+      }
+      let pressedOnBackdrop = false;
+      // Buttons start hidden: without this script they could not open
+      // anything.
+      button.hidden = false;
+      button.addEventListener('click', () => dialog.showModal());
+      dialog.addEventListener('pointerdown', (event) => {
+        pressedOnBackdrop = event.target === dialog;
+      });
+      dialog.addEventListener('click', (event) => {
+        if (pressedOnBackdrop && event.target === dialog) dialog.close();
+      });
+    }
+  </script>
+</body>
+
+</html>

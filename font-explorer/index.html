@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Font Explorer</title>
+<meta name="description" content="Pair a heading font with a body font from Google Fonts, tune size, weight, and spacing, and copy the CSS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- The page title's font, loaded whatever the menus start on. The script
+     treats Fraunces as already loaded. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&display=swap">
+<style>
+  :root {
+    --ink: #1a1f1c;
+    --ink-muted: #434b46;
+    --ink-soft: #5b645f;
+    --paper: #fbfcfb;
+    --paper-dim: #eef2ef;
+    --line: #d7ded9;
+    --accent: #3b5c4d;
+    --accent-soft: #e3ebe6;
+    --stage-dark-ink: #f2efe8;
+    --stage-dark-soft: #a3aba6;
+    --stage-dark-line: #333;
+    /* The accent is too dark to show a focus ring on the Ink background. */
+    --stage-dark-focus: #9fd1b8;
+
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --text-label: 0.75rem;
+    --text-control: 0.8125rem;
+    --radius: 4px;
+    --focus-ring: 2px solid var(--accent);
+
+    /* One spacing scale for the whole page. */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+
+    --panel-width: 300px;
+    --measure: 720px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+  /* LAYOUT */
+  .app {
+    display: grid;
+    grid-template-columns: var(--panel-width) 1fr;
+    min-height: 100vh;
+  }
+
+  /* CONTROL PANEL */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-7);
+    border-inline-end: 1px solid var(--line);
+    background: var(--paper-dim);
+  }
+
+  .panel h1 {
+    margin: 0;
+    font-family: "Fraunces", serif;
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 var(--space-5);
+    border: 0;
+    border-block-end: 1px solid var(--line);
+  }
+
+  .group:last-child { padding-block-end: 0; border-block-end: 0; }
+
+  .group-title,
+  .group legend {
+    margin: 0;
+    padding: 0;
+    font-size: var(--text-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* A legend is not a flex item of its fieldset, so its own margin sets
+     the gap below it. */
+  .group legend { margin-block-end: var(--space-3); }
+
+  .field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-2);
+    align-items: baseline;
+    font-size: var(--text-label);
+  }
+
+  .field label { color: var(--ink-muted); }
+
+  .field select,
+  .field input[type="range"] { grid-column: 1 / -1; }
+
+  .tag {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.625rem;
+    color: var(--ink);
+  }
+
+  .value {
+    min-width: 4ch;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  select {
+    width: 100%;
+    padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    /* appearance: none drops the native arrow, so the chevron is drawn here. */
+    background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%231a1f1c' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right var(--space-3) center;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-control);
+    appearance: none;
+    cursor: pointer;
+  }
+
+  /* Forced colors leave the drawn chevron's dark stroke as it is, so the
+     native arrow is restored there. */
+  @media (forced-colors: active) {
+    select { appearance: auto; background-image: none; padding-inline-end: var(--space-3); }
+  }
+
+  input[type="range"] {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    border-radius: var(--radius);
+    font-size: var(--text-label);
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  /* The ring, not the fill, marks the circle's edge: the light fills sit
+     too close to the panel color to show one. */
+  .swatch-color {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--ink-soft);
+    border-radius: 50%;
+  }
+
+  /* An underline rather than bold, which would widen the name and shift
+     the swatches beside it. */
+  .swatch:has(input:checked) {
+    color: var(--ink);
+    text-decoration: underline 2px;
+    text-underline-offset: 3px;
+  }
+
+  .swatch:has(input:checked) .swatch-color { box-shadow: 0 0 0 2px var(--paper-dim), 0 0 0 3px var(--ink); }
+
+  /* The radio itself is visually hidden, so its swatch shows the focus. */
+  .swatch:has(input:focus-visible) { outline: var(--focus-ring); outline-offset: 2px; }
+
+  /* Forced colors would repaint every fill the same and drop the
+     box-shadow, so the fills keep their colors and the selected circle
+     takes an outline instead. */
+  @media (forced-colors: active) {
+    .swatch-color { forced-color-adjust: none; border-color: CanvasText; }
+    .swatch:has(input:checked) .swatch-color { box-shadow: none; outline: 2px solid CanvasText; outline-offset: 2px; }
+  }
+
+  button {
+    width: 100%;
+    padding: var(--space-3);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: var(--text-label);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+
+  /* Transparent, so forced colors has a border to repaint. */
+  .action {
+    border: 1px solid transparent;
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .action:hover { background: var(--accent); }
+
+  .secondary {
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .secondary:hover { background: var(--accent-soft); }
+
+  .meta {
+    margin: 0;
+    font-size: var(--text-label);
+    line-height: 1.6;
+    color: var(--ink-soft);
+  }
+
+  .meta:empty { display: none; }
+
+  .css-out {
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    font-size: var(--text-label);
+    line-height: 1.6;
+    /* Wrapping, not scrolling, keeps the whole snippet readable in the
+       narrow panel without a scroll region. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* PREVIEW */
+  .stage-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .stage-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-6);
+    border-block-end: 1px solid var(--line);
+    font-size: var(--text-label);
+    color: var(--ink-soft);
+  }
+
+  .stage-toolbar p { margin: 0; }
+
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-inline-end: var(--space-2);
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* The background comes from the chosen swatch, set by the script. */
+  .stage {
+    flex: 1;
+    padding: var(--space-8);
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .stage { transition: background-color 0.2s ease, color 0.2s ease; }
+  }
+
+  .stage.dark {
+    --line: var(--stage-dark-line);
+    --ink-soft: var(--stage-dark-soft);
+    --focus-ring: 2px solid var(--stage-dark-focus);
+    color: var(--stage-dark-ink);
+  }
+
+  /* After every rule it overrides, so the narrow layout wins. */
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { border-inline-end: none; border-block-end: 1px solid var(--line); }
+    .stage { padding: var(--space-6) var(--space-5) var(--space-7); }
+    .stage-toolbar { padding-inline: var(--space-5); }
+  }
+
+  .stage-inner {
+    max-width: var(--measure);
+    margin: 0 auto;
+  }
+
+  .stage-title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-label);
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+
+  [contenteditable] {
+    border-radius: var(--radius);
+    cursor: text;
+  }
+
+  [contenteditable]:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+
+  .stage.dark [contenteditable]:hover { background: rgb(255 255 255 / 0.06); }
+
+  .sample-heading { margin: 0 0 var(--space-5); }
+
+  .sample-body { max-width: 62ch; }
+
+  .sample-body p { margin: 0 0 1em; }
+
+  .sample-body p:last-child { margin-block-end: 0; }
+
+  .divider {
+    height: 1px;
+    margin: var(--space-7) 0 var(--space-5);
+    background: var(--line);
+    opacity: 0.6;
+  }
+
+  .edit-hint {
+    margin: 0;
+    font-size: var(--text-label);
+    color: var(--ink-soft);
+  }
+
+</style>
+<!-- icons -->
+<link rel="icon" href="../favicon.ico?v=5527d947" sizes="32x32">
+<link rel="icon" href="../favicon.svg?v=9356d9ef" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=b6b447d3">
+<link rel="manifest" href="../site.webmanifest?v=02307423">
+<!-- /icons -->
+</head>
+<body>
+
+<main class="app">
+
+  <section class="panel" aria-labelledby="page-title">
+    <h1 id="page-title">Font Explorer</h1>
+
+    <fieldset class="group">
+      <legend>Heading</legend>
+      <div class="field">
+        <label for="heading-font">Font</label><span class="tag" id="heading-category"></span>
+        <select id="heading-font" aria-describedby="heading-category"></select>
+      </div>
+      <div class="field">
+        <label for="heading-size">Size</label><span class="value" id="heading-size-value" aria-hidden="true"></span>
+        <input type="range" id="heading-size" min="20" max="96" value="44">
+      </div>
+      <div class="field">
+        <label for="heading-weight">Weight</label><span class="value" id="heading-weight-value" aria-hidden="true"></span>
+        <input type="range" id="heading-weight" min="100" max="900" step="100" value="600">
+      </div>
+      <div class="field">
+        <label for="heading-tracking">Tracking</label><span class="value" id="heading-tracking-value" aria-hidden="true"></span>
+        <input type="range" id="heading-tracking" min="-5" max="10" value="-1" step="0.5">
+      </div>
+      <div class="field">
+        <label for="heading-leading">Line height</label><span class="value" id="heading-leading-value" aria-hidden="true"></span>
+        <input type="range" id="heading-leading" min="0.85" max="1.8" value="1.1" step="0.05">
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Body</legend>
+      <div class="field">
+        <label for="body-font">Font</label><span class="tag" id="body-category"></span>
+        <select id="body-font" aria-describedby="body-category"></select>
+      </div>
+      <div class="field">
+        <label for="body-size">Size</label><span class="value" id="body-size-value" aria-hidden="true"></span>
+        <input type="range" id="body-size" min="12" max="24" value="17">
+      </div>
+      <div class="field">
+        <label for="body-weight">Weight</label><span class="value" id="body-weight-value" aria-hidden="true"></span>
+        <input type="range" id="body-weight" min="100" max="900" step="100" value="400">
+      </div>
+      <div class="field">
+        <label for="body-leading">Line height</label><span class="value" id="body-leading-value" aria-hidden="true"></span>
+        <input type="range" id="body-leading" min="1.1" max="2.1" value="1.6" step="0.05">
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Background</legend>
+      <div class="swatches" id="swatches"></div>
+    </fieldset>
+
+    <div class="group">
+      <label class="group-title" for="preset">Pairings by style</label>
+      <select id="preset">
+        <option value="">Choose a pairing</option>
+      </select>
+      <p class="meta" id="preset-group"></p>
+      <button type="button" class="action" id="shuffle">Shuffle pairing</button>
+    </div>
+
+    <div class="group" role="group" aria-labelledby="css-title">
+      <h2 class="group-title" id="css-title">CSS for this pairing</h2>
+      <pre class="css-out"><code id="css"></code></pre>
+      <button type="button" class="secondary" id="copy-css">Copy CSS</button>
+    </div>
+  </section>
+
+  <section class="stage-wrap" aria-labelledby="preview-title">
+    <div class="stage-toolbar">
+      <p><span class="dot" aria-hidden="true"></span><span id="pairing-name"></span></p>
+      <p id="preview-width"></p>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="stage-inner">
+        <h2 class="stage-title" id="preview-title">Preview</h2>
+
+        <p class="sample-heading" id="sample-heading" contenteditable="true" role="textbox" aria-label="Sample headline" aria-describedby="edit-hint" spellcheck="false">A sample headline in the heading font</p>
+
+        <!-- Plaintext-only editing preserves whitespace, so the markup has
+             none between or around the paragraphs. -->
+        <div class="sample-body" id="sample-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Sample paragraphs" aria-describedby="edit-hint" spellcheck="false"><p>This paragraph is set in the body font. Use the Body controls to change its size, weight, and line height, and the Heading controls to change the headline.</p><p>A second paragraph gives the body text enough lines to judge. Check the space between lines, the length of each line, and whether the headline and the paragraphs look like they belong on the same page.</p></div>
+
+        <div class="divider"></div>
+        <p class="edit-hint" id="edit-hint">You can edit the headline and paragraphs to try your own text.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="visually-hidden" id="status" role="status"></p>
+</main>
+
+<script>
+// Fonts offered in the menus: display name, Google Fonts family parameter,
+// category, and the weights the family actually has. Display fonts that are
+// serifs have a `fallback` field, since the display category falls back to
+// sans-serif.
+const FONTS = [
+  { name: "Fraunces", family: "Fraunces:opsz,wght@9..144,300..900", cat: "serif", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { name: "Playfair Display", family: "Playfair+Display:wght@400..900", cat: "serif", weights: [400, 500, 600, 700, 800, 900] },
+  { name: "Source Serif 4", family: "Source+Serif+4:wght@300..900", cat: "serif", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { name: "Lora", family: "Lora:wght@400..700", cat: "serif", weights: [400, 500, 600, 700] },
+  { name: "Libre Caslon Text", family: "Libre+Caslon+Text:wght@400;700", cat: "serif", weights: [400, 700] },
+  { name: "Spectral", family: "Spectral:wght@300..800", cat: "serif", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Cormorant Garamond", family: "Cormorant+Garamond:wght@300..700", cat: "serif", weights: [300, 400, 500, 600, 700] },
+  { name: "Libre Caslon Display", family: "Libre+Caslon+Display:wght@400", cat: "serif", weights: [400] },
+  { name: "Maiden Orange", family: "Maiden+Orange:wght@400", cat: "serif", weights: [400] },
+  { name: "Bitter", family: "Bitter:wght@100..900", cat: "serif", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Abril Fatface", family: "Abril+Fatface:wght@400", cat: "serif", weights: [400] },
+  { name: "Italiana", family: "Italiana:wght@400", cat: "serif", weights: [400] },
+  { name: "Cinzel", family: "Cinzel:wght@400..900", cat: "serif", weights: [400, 500, 600, 700, 800, 900] },
+  { name: "Yeseva One", family: "Yeseva+One:wght@400", cat: "serif", weights: [400] },
+  { name: "Alice", family: "Alice:wght@400", cat: "serif", weights: [400] },
+  { name: "EB Garamond", family: "EB+Garamond:wght@400..800", cat: "serif", weights: [400, 500, 600, 700, 800] },
+  { name: "Alegreya", family: "Alegreya:wght@400..900", cat: "serif", weights: [400, 500, 600, 700, 800, 900] },
+  { name: "Cormorant Infant", family: "Cormorant+Infant:wght@300..700", cat: "serif", weights: [300, 400, 500, 600, 700] },
+  { name: "Libre Baskerville", family: "Libre+Baskerville:wght@400;700", cat: "serif", weights: [400, 700] },
+
+  { name: "Inter", family: "Inter:wght@300..900", cat: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { name: "Manrope", family: "Manrope:wght@300..800", cat: "sans", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Work Sans", family: "Work+Sans:wght@300..800", cat: "sans", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Archivo", family: "Archivo:wght@300..900", cat: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { name: "Space Grotesk", family: "Space+Grotesk:wght@300..700", cat: "sans", weights: [300, 400, 500, 600, 700] },
+  { name: "Sora", family: "Sora:wght@300..800", cat: "sans", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Libre Franklin", family: "Libre+Franklin:wght@300..800", cat: "sans", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Lato", family: "Lato:wght@100;300;400;700;900", cat: "sans", weights: [100, 300, 400, 700, 900] },
+  { name: "Josefin Sans", family: "Josefin+Sans:wght@100..700", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700] },
+  { name: "Montserrat", family: "Montserrat:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Karla", family: "Karla:wght@200..800", cat: "sans", weights: [200, 300, 400, 500, 600, 700, 800] },
+  { name: "Rubik", family: "Rubik:wght@300..900", cat: "sans", weights: [300, 400, 500, 600, 700, 800, 900] },
+  { name: "Poppins", family: "Poppins:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Source Sans 3", family: "Source+Sans+3:wght@200..900", cat: "sans", weights: [200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Barlow", family: "Barlow:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "DM Sans", family: "DM+Sans:wght@100..1000", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] },
+  { name: "IBM Plex Sans", family: "IBM+Plex+Sans:wght@100..700", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700] },
+  { name: "Jura", family: "Jura:wght@300..700", cat: "sans", weights: [300, 400, 500, 600, 700] },
+  { name: "Public Sans", family: "Public+Sans:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Rajdhani", family: "Rajdhani:wght@300..700", cat: "sans", weights: [300, 400, 500, 600, 700] },
+  { name: "Chakra Petch", family: "Chakra+Petch:wght@300..700", cat: "sans", weights: [300, 400, 500, 600, 700] },
+  { name: "Jost", family: "Jost:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Comic Neue", family: "Comic+Neue:wght@300;400;700", cat: "sans", weights: [300, 400, 700] },
+  { name: "Nunito", family: "Nunito:wght@200..1000", cat: "sans", weights: [200, 300, 400, 500, 600, 700, 800, 900, 1000] },
+  { name: "Alegreya Sans", family: "Alegreya+Sans:wght@100;300;400;500;700;800;900", cat: "sans", weights: [100, 300, 400, 500, 700, 800, 900] },
+  { name: "Nunito Sans", family: "Nunito+Sans:wght@200..1000", cat: "sans", weights: [200, 300, 400, 500, 600, 700, 800, 900, 1000] },
+  { name: "Raleway", family: "Raleway:wght@100..900", cat: "sans", weights: [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+  { name: "Oswald", family: "Oswald:wght@200..700", cat: "sans", weights: [200, 300, 400, 500, 600, 700] },
+
+  { name: "IBM Plex Mono", family: "IBM+Plex+Mono:wght@400;500;600;700", cat: "mono", weights: [400, 500, 600, 700] },
+  { name: "JetBrains Mono", family: "JetBrains+Mono:wght@400..800", cat: "mono", weights: [400, 500, 600, 700, 800] },
+  { name: "Space Mono", family: "Space+Mono:wght@400;700", cat: "mono", weights: [400, 700] },
+  { name: "VT323", family: "VT323:wght@400", cat: "mono", weights: [400] },
+  { name: "Major Mono Display", family: "Major+Mono+Display:wght@400", cat: "mono", weights: [400] },
+  { name: "Roboto Mono", family: "Roboto+Mono:wght@100..700", cat: "mono", weights: [100, 200, 300, 400, 500, 600, 700] },
+  { name: "Special Elite", family: "Special+Elite:wght@400", cat: "mono", weights: [400] },
+
+  { name: "Bricolage Grotesque", family: "Bricolage+Grotesque:wght@400..800", cat: "display", weights: [400, 500, 600, 700, 800] },
+  { name: "Instrument Serif", family: "Instrument+Serif:wght@400", cat: "display", weights: [400], fallback: "serif" },
+  { name: "DM Serif Display", family: "DM+Serif+Display:wght@400", cat: "display", weights: [400], fallback: "serif" },
+  { name: "Unbounded", family: "Unbounded:wght@300..800", cat: "display", weights: [300, 400, 500, 600, 700, 800] },
+  { name: "Staatliches", family: "Staatliches:wght@400", cat: "display", weights: [400] },
+  { name: "Michroma", family: "Michroma:wght@400", cat: "display", weights: [400] },
+  { name: "Syncopate", family: "Syncopate:wght@400;700", cat: "display", weights: [400, 700] },
+  { name: "Righteous", family: "Righteous:wght@400", cat: "display", weights: [400] },
+  { name: "Krona One", family: "Krona+One:wght@400", cat: "display", weights: [400] },
+  { name: "Orbitron", family: "Orbitron:wght@400..900", cat: "display", weights: [400, 500, 600, 700, 800, 900] },
+  { name: "Monoton", family: "Monoton:wght@400", cat: "display", weights: [400] },
+  { name: "Audiowide", family: "Audiowide:wght@400", cat: "display", weights: [400] },
+  { name: "Oxanium", family: "Oxanium:wght@200..800", cat: "display", weights: [200, 300, 400, 500, 600, 700, 800] },
+  { name: "Zen Dots", family: "Zen+Dots:wght@400", cat: "display", weights: [400] },
+  { name: "Atomic Age", family: "Atomic+Age:wght@400", cat: "display", weights: [400] },
+  { name: "Sigmar One", family: "Sigmar+One:wght@400", cat: "display", weights: [400] },
+  { name: "Bowlby One SC", family: "Bowlby+One+SC:wght@400", cat: "display", weights: [400] },
+  { name: "Rye", family: "Rye:wght@400", cat: "display", weights: [400], fallback: "serif" },
+  { name: "Limelight", family: "Limelight:wght@400", cat: "display", weights: [400], fallback: "serif" },
+  { name: "Poiret One", family: "Poiret+One:wght@400", cat: "display", weights: [400] },
+  { name: "Bebas Neue", family: "Bebas+Neue:wght@400", cat: "display", weights: [400] },
+  { name: "Megrim", family: "Megrim:wght@400", cat: "display", weights: [400] },
+  { name: "Metamorphous", family: "Metamorphous:wght@400", cat: "display", weights: [400], fallback: "serif" },
+  { name: "Almendra Display", family: "Almendra+Display:wght@400", cat: "display", weights: [400], fallback: "serif" },
+
+  { name: "Dancing Script", family: "Dancing+Script:wght@400..700", cat: "script", weights: [400, 500, 600, 700] },
+  { name: "Cookie", family: "Cookie:wght@400", cat: "script", weights: [400] },
+  { name: "Monsieur La Doulaise", family: "Monsieur+La+Doulaise:wght@400", cat: "script", weights: [400] },
+  { name: "Pacifico", family: "Pacifico:wght@400", cat: "script", weights: [400] },
+  { name: "Satisfy", family: "Satisfy:wght@400", cat: "script", weights: [400] },
+  { name: "Sacramento", family: "Sacramento:wght@400", cat: "script", weights: [400] },
+  { name: "Mrs Saint Delafield", family: "Mrs+Saint+Delafield:wght@400", cat: "script", weights: [400] },
+  { name: "Seaweed Script", family: "Seaweed+Script:wght@400", cat: "script", weights: [400] },
+  { name: "Oregano", family: "Oregano:wght@400", cat: "script", weights: [400] },
+  { name: "Mrs Sheppards", family: "Mrs+Sheppards:wght@400", cat: "script", weights: [400] },
+  { name: "Purple Purse", family: "Purple+Purse:wght@400", cat: "script", weights: [400] },
+  { name: "Lobster Two", family: "Lobster+Two:ital,wght@0,400;0,700;1,400;1,700", cat: "script", weights: [400, 700] },
+  { name: "Yellowtail", family: "Yellowtail:wght@400", cat: "script", weights: [400] },
+  { name: "Kaushan Script", family: "Kaushan+Script:wght@400", cat: "script", weights: [400] },
+  { name: "Grand Hotel", family: "Grand+Hotel:wght@400", cat: "script", weights: [400] },
+  { name: "Patrick Hand", family: "Patrick+Hand:wght@400", cat: "script", weights: [400] },
+  { name: "Berkshire Swash", family: "Berkshire+Swash:wght@400", cat: "script", weights: [400] },
+  { name: "Sail", family: "Sail:wght@400", cat: "script", weights: [400] },
+
+  { name: "Cherry Cream Soda", family: "Cherry+Cream+Soda:wght@400", cat: "playful", weights: [400] },
+  { name: "Luckiest Guy", family: "Luckiest+Guy:wght@400", cat: "playful", weights: [400] },
+  { name: "Carter One", family: "Carter+One:wght@400", cat: "playful", weights: [400] },
+  { name: "Mouse Memoirs", family: "Mouse+Memoirs:wght@400", cat: "playful", weights: [400] },
+  { name: "Shojumaru", family: "Shojumaru:wght@400", cat: "playful", weights: [400] },
+  { name: "Ranchers", family: "Ranchers:wght@400", cat: "playful", weights: [400] },
+  { name: "Warnes", family: "Warnes:wght@400", cat: "playful", weights: [400] },
+  { name: "Fontdiner Swanky", family: "Fontdiner+Swanky:wght@400", cat: "playful", weights: [400] },
+  { name: "Jolly Lodger", family: "Jolly+Lodger:wght@400", cat: "playful", weights: [400] },
+  { name: "Life Savers", family: "Life+Savers:wght@400;700;800", cat: "playful", weights: [400, 700, 800] },
+  { name: "Bangers", family: "Bangers:wght@400", cat: "playful", weights: [400] },
+
+  { name: "Alfa Slab One", family: "Alfa+Slab+One:wght@400", cat: "slab", weights: [400] },
+  { name: "Bevan", family: "Bevan:wght@400", cat: "slab", weights: [400] },
+];
+
+// Menu order and labels for the categories, and the generic family each
+// falls back to while its web font loads.
+const CATEGORIES = {
+  serif: { label: "Serif", fallback: "serif" },
+  sans: { label: "Sans serif", fallback: "sans-serif" },
+  slab: { label: "Slab serif", fallback: "serif" },
+  mono: { label: "Monospace", fallback: "monospace" },
+  display: { label: "Display", fallback: "sans-serif" },
+  script: { label: "Script", fallback: "cursive" },
+  playful: { label: "Playful", fallback: "sans-serif" },
+};
+
+const PRESETS = [
+  { group: "Diner and advertising script", heading: "Pacifico", body: "Work Sans" },
+  { group: "Diner and advertising script", heading: "Lobster Two", body: "Lato" },
+  { group: "Diner and advertising script", heading: "Yellowtail", body: "Josefin Sans" },
+  { group: "Diner and advertising script", heading: "Kaushan Script", body: "Montserrat" },
+  { group: "Diner and advertising script", heading: "Grand Hotel", body: "Karla" },
+  { group: "Slab and poster", heading: "Alfa Slab One", body: "Rubik" },
+  { group: "Slab and poster", heading: "Bevan", body: "Archivo" },
+  { group: "Slab and poster", heading: "Staatliches", body: "Bitter" },
+  { group: "Atomic and modern", heading: "Michroma", body: "Inter" },
+  { group: "Atomic and modern", heading: "Abril Fatface", body: "Poppins" },
+  { group: "Retro-futurism and Googie", heading: "Syncopate", body: "Barlow" },
+  { group: "Retro-futurism and Googie", heading: "Righteous", body: "DM Sans" },
+  { group: "1970s NASA and Kubrick", heading: "Krona One", body: "IBM Plex Sans" },
+  { group: "1970s NASA and Kubrick", heading: "Jura", body: "Public Sans" },
+  { group: "1970s NASA and Kubrick", heading: "Space Grotesk", body: "Space Mono" },
+  { group: "1980s synthwave and chrome", heading: "Orbitron", body: "Rajdhani" },
+  { group: "1980s synthwave and chrome", heading: "Monoton", body: "Archivo" },
+  { group: "1980s synthwave and chrome", heading: "Audiowide", body: "Manrope" },
+  { group: "Cyber and terminal", heading: "Chakra Petch", body: "JetBrains Mono" },
+  { group: "Cyber and terminal", heading: "VT323", body: "IBM Plex Mono" },
+  { group: "Cyber and terminal", heading: "Major Mono Display", body: "Roboto Mono" },
+  { group: "Clean near-future", heading: "Oxanium", body: "Sora" },
+  { group: "Clean near-future", heading: "Zen Dots", body: "Inter" },
+  { group: "Atomic age and Googie neon", heading: "Monoton", body: "Jost" },
+  { group: "Atomic age and Googie neon", heading: "Audiowide", body: "Space Mono" },
+  { group: "Atomic age and Googie neon", heading: "Michroma", body: "Archivo" },
+  { group: "Atomic age and Googie neon", heading: "Syncopate", body: "Karla" },
+  { group: "Atomic age and Googie neon", heading: "Atomic Age", body: "Poppins" },
+  { group: "Atomic age and Googie neon", heading: "Krona One", body: "Work Sans" },
+  { group: "Retro comic and pulp", heading: "Bangers", body: "Comic Neue" },
+  { group: "Retro comic and pulp", heading: "Luckiest Guy", body: "Nunito" },
+  { group: "Retro comic and pulp", heading: "Sigmar One", body: "Alegreya Sans" },
+  { group: "Retro comic and pulp", heading: "Bowlby One SC", body: "Patrick Hand" },
+  { group: "Retro comic and pulp", heading: "Rye", body: "Nunito Sans" },
+  { group: "Art Deco", heading: "Limelight", body: "Josefin Sans" },
+  { group: "Art Deco", heading: "Poiret One", body: "Karla" },
+  { group: "Art Deco", heading: "Bebas Neue", body: "Cormorant Garamond" },
+  { group: "Art Deco", heading: "Megrim", body: "Jost" },
+  { group: "Art Deco", heading: "Italiana", body: "Lato" },
+  { group: "Art Deco", heading: "Cinzel", body: "Raleway" },
+  { group: "Art Nouveau", heading: "Berkshire Swash", body: "Cormorant Garamond" },
+  { group: "Art Nouveau", heading: "Yeseva One", body: "Alice" },
+  { group: "Art Nouveau", heading: "Metamorphous", body: "EB Garamond" },
+  { group: "Art Nouveau", heading: "Sail", body: "Alegreya" },
+  { group: "Art Nouveau", heading: "Almendra Display", body: "Cormorant Infant" },
+  { group: "1940s", heading: "Special Elite", body: "Libre Baskerville" },
+  { group: "1940s", heading: "Alfa Slab One", body: "Libre Franklin" },
+  { group: "1940s", heading: "Oswald", body: "Bitter" },
+  { group: "1940s", heading: "Kaushan Script", body: "Archivo" },
+  { group: "1940s", heading: "Limelight", body: "Special Elite" },
+  { group: "1940s", heading: "Yellowtail", body: "Libre Franklin" },
+];
+
+// Shuffle draws from these everyday pairings rather than from PRESETS,
+// which lean toward period styles.
+const SHUFFLE_PAIRS = [
+  ["Fraunces", "Inter"], ["Playfair Display", "Work Sans"], ["Source Serif 4", "Manrope"],
+  ["Space Grotesk", "Libre Franklin"], ["Instrument Serif", "Sora"], ["DM Serif Display", "Archivo"],
+  ["Libre Caslon Text", "Inter"], ["Bricolage Grotesque", "Source Serif 4"], ["Unbounded", "Work Sans"],
+  ["Cormorant Garamond", "Manrope"], ["Spectral", "Space Grotesk"], ["Lora", "IBM Plex Mono"],
+];
+
+// The first background is the preview's starting one.
+const BACKGROUNDS = [
+  { name: "White", color: "#ffffff", dark: false },
+  { name: "Paper", color: "#faf8f4", dark: false },
+  { name: "Sand", color: "#f1ece0", dark: false },
+  { name: "Mist", color: "#eef1ef", dark: false },
+  { name: "Ink", color: "#17181a", dark: true },
+];
+
+const $ = (id) => document.getElementById(id);
+const fontByName = new Map(FONTS.map((font) => [font.name, font]));
+
+const heading = {
+  font: $("heading-font"),
+  category: $("heading-category"),
+  size: $("heading-size"),
+  weight: $("heading-weight"),
+  tracking: $("heading-tracking"),
+  leading: $("heading-leading"),
+  sample: $("sample-heading"),
+};
+
+const body = {
+  font: $("body-font"),
+  category: $("body-category"),
+  size: $("body-size"),
+  weight: $("body-weight"),
+  leading: $("body-leading"),
+  sample: $("sample-body"),
+};
+
+const presetSelect = $("preset");
+const presetGroup = $("preset-group");
+const stage = $("stage");
+const status = $("status");
+const cssCode = $("css");
+
+// Fraunces is linked in the head for the page title.
+const loadedFonts = new Set(["Fraunces"]);
+
+function loadFont(font) {
+  if (loadedFonts.has(font.name)) return;
+  loadedFonts.add(font.name);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${font.family}&display=swap`;
+  document.head.append(link);
+}
+
+function closestWeight(font, target) {
+  return font.weights.reduce((best, weight) => (Math.abs(weight - target) < Math.abs(best - target) ? weight : best));
+}
+
+function fontStack(font) {
+  return `"${font.name}", ${font.fallback ?? CATEGORIES[font.cat].fallback}`;
+}
+
+// A change to a live region is read, so a repeated message would go unread
+// if written over itself. The region is emptied first and filled after a gap
+// long enough to render the empty state; a newer message cancels a waiting
+// one.
+const ANNOUNCE_GAP_MS = 100;
+let announceTimer;
+function announce(message) {
+  clearTimeout(announceTimer);
+  status.textContent = "";
+  announceTimer = setTimeout(() => { status.textContent = message; }, ANNOUNCE_GAP_MS);
+}
+
+function fillFontMenu(select, selected) {
+  for (const [cat, { label }] of Object.entries(CATEGORIES)) {
+    const group = document.createElement("optgroup");
+    group.label = label;
+    const fonts = FONTS.filter((font) => font.cat === cat).sort((a, b) => a.name.localeCompare(b.name));
+    for (const font of fonts) group.append(new Option(font.name, font.name));
+    select.append(group);
+  }
+  select.value = selected;
+}
+
+// Option values are indexes into PRESETS.
+function fillPresetMenu() {
+  const groups = new Map();
+  PRESETS.forEach((preset, index) => {
+    if (!groups.has(preset.group)) {
+      const group = document.createElement("optgroup");
+      group.label = preset.group;
+      groups.set(preset.group, group);
+      presetSelect.append(group);
+    }
+    groups.get(preset.group).append(new Option(`${preset.heading} + ${preset.body}`, index));
+  });
+}
+
+function fillSwatches() {
+  const container = $("swatches");
+  BACKGROUNDS.forEach((background, index) => {
+    const label = document.createElement("label");
+    label.className = "swatch";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "background";
+    input.value = index;
+    input.className = "visually-hidden";
+    input.checked = index === 0;
+    const color = document.createElement("span");
+    color.className = "swatch-color";
+    color.style.background = background.color;
+    const name = document.createElement("span");
+    name.textContent = background.name;
+    label.append(input, color, name);
+    container.append(label);
+  });
+  container.addEventListener("change", (event) => setBackground(BACKGROUNDS[event.target.value]));
+}
+
+function setBackground(background) {
+  stage.style.background = background.color;
+  stage.classList.toggle("dark", background.dark);
+}
+
+// Reads the controls and builds one set of declarations per sample, which
+// styles the samples and writes the CSS snippet. The heading size goes on
+// h1 alone in the snippet, so pasted CSS leaves smaller headings their own
+// sizes.
+function render() {
+  const headingFont = fontByName.get(heading.font.value);
+  const bodyFont = fontByName.get(body.font.value);
+  loadFont(headingFont);
+  loadFont(bodyFont);
+
+  // Each weight readout shows the nearest weight the font has.
+  const headingWeight = closestWeight(headingFont, Number(heading.weight.value));
+  const bodyWeight = closestWeight(bodyFont, Number(body.weight.value));
+
+  const headingType = {
+    "font-family": fontStack(headingFont),
+    "font-weight": headingWeight,
+    "letter-spacing": `${heading.tracking.value / 100}em`,
+    "line-height": heading.leading.value,
+  };
+  const headingSize = { "font-size": `${heading.size.value}px` };
+  const bodyType = {
+    "font-family": fontStack(bodyFont),
+    "font-size": `${body.size.value}px`,
+    "font-weight": bodyWeight,
+    "line-height": body.leading.value,
+  };
+
+  applyStyle(heading.sample, { ...headingType, ...headingSize });
+  applyStyle(body.sample, bodyType);
+
+  heading.category.textContent = CATEGORIES[headingFont.cat].label;
+  body.category.textContent = CATEGORIES[bodyFont.cat].label;
+  $("pairing-name").textContent = `${headingFont.name} / ${bodyFont.name}`;
+
+  showValue(heading.size, `${heading.size.value}px`, `${heading.size.value} pixels`);
+  showValue(heading.weight, headingWeight);
+  showValue(heading.tracking, `${heading.tracking.value}%`, `${heading.tracking.value} percent`);
+  showValue(heading.leading, heading.leading.value);
+  showValue(body.size, `${body.size.value}px`, `${body.size.value} pixels`);
+  showValue(body.weight, bodyWeight);
+  showValue(body.leading, body.leading.value);
+
+  const families = [...new Set([headingFont, bodyFont])].map((font) => `family=${font.family}`).join("&");
+  cssCode.textContent = [
+    `@import url("https://fonts.googleapis.com/css2?${families}&display=swap");`,
+    cssRule("h1, h2, h3", headingType),
+    cssRule("h1", headingSize),
+    cssRule("body", bodyType),
+  ].join("\n\n");
+}
+
+function applyStyle(element, declarations) {
+  for (const [property, value] of Object.entries(declarations)) element.style.setProperty(property, value);
+}
+
+function cssRule(selector, declarations) {
+  const lines = Object.entries(declarations).map(([property, value]) => `  ${property}: ${value};`);
+  return [`${selector} {`, ...lines, "}"].join("\n");
+}
+
+// Shows a slider's readout and sets the value a screen reader speaks for it.
+function showValue(slider, text, spoken = String(text)) {
+  $(`${slider.id}-value`).textContent = text;
+  slider.setAttribute("aria-valuetext", spoken);
+}
+
+// An intro, such as a style pairing's group name, comes first in the
+// announcement.
+function setPairing(headingName, bodyName, intro = "") {
+  heading.font.value = headingName;
+  body.font.value = bodyName;
+  render();
+  announce(`${intro}Heading font ${headingName}, body font ${bodyName}.`);
+}
+
+function clearPreset() {
+  presetSelect.value = "";
+  presetGroup.textContent = "";
+}
+
+fillFontMenu(heading.font, "Fraunces");
+fillFontMenu(body.font, "Inter");
+fillPresetMenu();
+fillSwatches();
+setBackground(BACKGROUNDS[0]);
+$("preview-width").textContent = `Maximum preview width ${getComputedStyle(document.documentElement).getPropertyValue("--measure").trim()}`;
+
+for (const control of [heading.size, heading.weight, heading.tracking, heading.leading, body.size, body.weight, body.leading]) {
+  control.addEventListener("input", render);
+}
+
+// Picking a font by hand clears the chosen pairing.
+for (const select of [heading.font, body.font]) {
+  select.addEventListener("change", () => {
+    clearPreset();
+    render();
+  });
+}
+
+presetSelect.addEventListener("change", () => {
+  const preset = PRESETS[presetSelect.value];
+  if (!preset) {
+    presetGroup.textContent = "";
+    return;
+  }
+  presetGroup.textContent = preset.group;
+  setPairing(preset.heading, preset.body, `${preset.group}. `);
+});
+
+$("shuffle").addEventListener("click", () => {
+  clearPreset();
+  const current = `${heading.font.value}|${body.font.value}`;
+  const choices = SHUFFLE_PAIRS.filter(([h, b]) => `${h}|${b}` !== current);
+  const [headingName, bodyName] = choices[Math.floor(Math.random() * choices.length)];
+  setPairing(headingName, bodyName);
+});
+
+$("copy-css").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(cssCode.textContent);
+    announce("CSS copied.");
+  } catch {
+    // The snippet cannot take focus, so it is selected for the visitor,
+    // who may have no other way to select it from the keyboard.
+    getSelection().selectAllChildren(cssCode);
+    announce("Copying is not available here. The CSS is selected, so press Control C or Command C to copy it.");
+  }
+});
+
+// Pasted text arrives without formatting where the browser supports
+// plaintext-only editing; browsers that reject the value keep plain
+// contenteditable.
+for (const sample of [heading.sample, body.sample]) {
+  try {
+    sample.contentEditable = "plaintext-only";
+  } catch {}
+}
+
+// The headline is a single-line textbox, so nothing adds a line to it.
+// The Enter that commits an IME composition fires no insertParagraph, so
+// this cancels Enter without blocking IME input.
+heading.sample.addEventListener("beforeinput", (event) => {
+  if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") event.preventDefault();
+});
+
+// Pasted lines join with spaces. execCommand is deprecated, but it is the
+// only insertion that stays on the undo stack; where it is unsupported the
+// text goes in through the selection range instead.
+heading.sample.addEventListener("paste", (event) => {
+  event.preventDefault();
+  const text = event.clipboardData.getData("text/plain").trim().replace(/\s*\n\s*/g, " ");
+  if (document.execCommand("insertText", false, text)) return;
+  const selection = getSelection();
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(document.createTextNode(text));
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+});
+
+// Any line that still arrives (a drop, an autocorrection) is joined back
+// into the one line.
+heading.sample.addEventListener("input", () => {
+  const text = heading.sample.textContent;
+  if (!text.includes("\n")) return;
+  heading.sample.textContent = text.replace(/\s*\n\s*/g, " ");
+  getSelection().selectAllChildren(heading.sample);
+  getSelection().collapseToEnd();
+});
+
+render();
+</script>
+</body>
+</html>

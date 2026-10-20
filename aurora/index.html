@@ -56,6 +56,12 @@
     color: rgba(190, 225, 245, .6);
   }
   .title.gone { opacity: 0; }
+
+  /* Touch only: a touch counts as a gesture for audio only once it ends as a tap, so a
+     first swipe would otherwise play silently. A mouse press already counts. */
+  .title .start { display: none; justify-self: center; margin-top: 2.2em; pointer-events: auto; }
+  @media (hover: none) { .title .start { display: block; } }
+  .title.started .start { display: none; }
 </style>
 <!-- icons -->
 <link rel="icon" href="../favicon.ico?v=5527d947" sizes="32x32">
@@ -70,6 +76,7 @@
 <div class="title" id="title">
   <h1>Aurora</h1>
   <p>drag to paint the sky</p>
+  <button class="start" id="btn-start">start</button>
 </div>
 
 <div class="hud" id="hud">
@@ -248,6 +255,7 @@ const Sound = (() => {
 
   return {
     get enabled() { return enabled; },
+    get unlocked() { return unlocked; },
     get state() { return ready ? ac.state : 'none'; },
     get level() { return ready && ac.state === 'running' ? lastPeak : 0; },
     toggle() {
@@ -266,7 +274,7 @@ const Sound = (() => {
      *  and the convolver's setup off the critical path: constructed inside the gesture
      *  instead, they sit between the swipe and its first chime. */
     prepare() { boot(); },
-    /** Called from a real input handler. Until then the sky plays silently: a browser keeps
+    /** Called from an input handler the browser counts as a gesture. Until then the sky plays silently: a browser keeps
      *  the context suspended without a gesture, and a suspended context has a frozen
      *  currentTime, so every note the self-playing sky schedules meanwhile lands at the same
      *  instant and fires together the moment the device comes back. */
@@ -1243,7 +1251,7 @@ function beginStroke(e) {
   travel = 0;
   peakSpeed = 0;
   live = null;
-  hideTitle();
+  if (!touchFirst.matches || Sound.unlocked) hideTitle();
   chime(e.clientY, 0.85);
   burst(e.clientX, e.clientY, 10);
 }
@@ -1335,13 +1343,6 @@ for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
   canvas.addEventListener(ev, e => { if (e.pointerId === activeId) endStroke(); });
 }
 
-// The audio device is only ever opened from a real gesture. Capture phase, so this runs
-// before the canvas handler on the same event: that handler fires the opening chime, and
-// on the bubble phase it would still be locked and lose it.
-for (const ev of ['pointerdown', 'keydown']) {
-  window.addEventListener(ev, () => Sound.unlock(), { once: true, capture: true });
-}
-
 // Losing the window or the tab mid-drag fires no pointer event at all.
 window.addEventListener('blur', endStroke);
 document.addEventListener('visibilitychange', () => { if (document.hidden) endStroke(); });
@@ -1398,7 +1399,7 @@ function autoTick(dt) {
 }
 
 function storm() {
-  hideTitle();
+  if (!touchFirst.matches) hideTitle();
   for (let i = 0; i < 6; i++) setTimeout(() => autoRibbon(true), i * 320);
   for (let i = 0; i < 5; i++) {
     setTimeout(() => {
@@ -1414,15 +1415,38 @@ const titleEl = document.getElementById('title');
 const hud = document.getElementById('hud');
 let titleGone = false;
 
+// The same query that shows the start button. Where it shows, the instruction stays up
+// until the first stroke with sound, because nothing else says that dragging plays.
+const touchFirst = matchMedia('(hover: none)');
+
 function hideTitle() {
   if (titleGone) return;
   titleGone = true;
   titleEl.classList.add('gone');
 }
-setTimeout(hideTitle, 7000);
+setTimeout(() => { if (!touchFirst.matches) hideTitle(); }, 7000);
 
 const btnSound = document.getElementById('btn-sound');
 const btnAuto = document.getElementById('btn-auto');
+const btnStart = document.getElementById('btn-start');
+
+// The audio device is only ever opened from an event the browser counts as a gesture. A
+// touch counts only once it ends as a tap, which arrives as a click. Unlocking on a touch
+// pointerdown instead schedules notes against a context that cannot start, and they all
+// fire at once on the first tap. Capture phase, so a mouse press unlocks before the canvas
+// handler fires the opening chime. Any tap unlocks, so the start button needs no handler.
+const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'click'];
+
+function unlockFrom(e) {
+  // A scripted click is untrusted and never counts as a gesture.
+  if (!e.isTrusted || (e.type === 'pointerdown' && e.pointerType !== 'mouse')) return;
+  Sound.unlock();
+  for (const ev of UNLOCK_EVENTS) window.removeEventListener(ev, unlockFrom, true);
+  // The button is about to vanish, which would drop a screen reader's focus to the page.
+  if (document.activeElement === btnStart) btnSound.focus();
+  titleEl.classList.add('started');
+}
+for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlockFrom, true);
 
 btnSound.addEventListener('click', () => {
   btnSound.setAttribute('aria-pressed', String(Sound.toggle()));

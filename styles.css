@@ -723,7 +723,10 @@
     inline-size: 100%;
     aspect-ratio: var(--card-image-ratio);
     object-fit: cover;
+    /* A card's inline background-image, a small blurred copy of its
+       screenshot, shows over this color until the screenshot loads. */
     background: var(--color-image-placeholder);
+    background-size: cover;
     box-shadow: var(--shadow-print);
     rotate: calc(var(--print-tilt) * var(--print-turn));
   }

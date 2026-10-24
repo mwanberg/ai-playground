@@ -64,10 +64,10 @@
   .title.started .start { display: none; }
 </style>
 <!-- icons -->
-<link rel="icon" href="../favicon.ico?v=5527d947" sizes="32x32">
-<link rel="icon" href="../favicon.svg?v=9356d9ef" type="image/svg+xml">
-<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=b6b447d3">
-<link rel="manifest" href="../site.webmanifest?v=02307423">
+<link rel="icon" href="../favicon.ico?v=b1de437e" sizes="32x32">
+<link rel="icon" href="../favicon.svg?v=315bd3bc" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=be987201">
+<link rel="manifest" href="../site.webmanifest?v=672ef44b">
 <!-- /icons -->
 </head>
 <body>
@@ -192,8 +192,9 @@ const Sound = (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { enabled = false; return; }
     // Declares the sound as media playback, as a video's is, instead of the
-    // ambient audio that Web Audio alone defaults to. Playback pauses other
-    // apps' music rather than mixing with it.
+    // ambient audio that Web Audio alone defaults to, which an iPhone in
+    // silent mode mutes. Playback pauses other apps' music rather than
+    // mixing with it.
     if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
     ac = new AC();
     ready = true;

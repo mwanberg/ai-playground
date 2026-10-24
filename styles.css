@@ -30,20 +30,49 @@
     /* Decoration. The dots never sit behind text: text is always on a
        solid surface. The highlighter sits behind the page title, which is
        large text, so it needs 4.5:1 against --color-text. */
-    --color-dot: light-dark(#c3c9d9, #2c3242);
-    /* Yellow highlighter ink in light mode; in dark mode, a deep rose from
-       the tape's pink, since a yellow dark enough for light text turns
-       muddy. */
-    --color-highlight: light-dark(#ffe27a, #7a2b4a);
-    /* Button hover fill and the theme switch's thumb: in light mode a
-       slightly heavier ink. Text and icons on it are normal size, so it
-       needs 7:1, stricter than the title's 4.5:1 on --color-highlight. */
-    --color-highlight-pool: light-dark(#fbd450, #7a2b4a);
-    --color-tape-1: rgb(255 160 185 / 0.7);
-    --color-tape-2: rgb(130 205 255 / 0.7);
-    --color-tape-3: rgb(150 225 185 / 0.7);
-    --color-tape-4: rgb(200 180 255 / 0.7);
-    --color-tape-5: rgb(255 200 145 / 0.7);
+    --color-dot: light-dark(#c3c9d9, #424a5e);
+    /* Yellow highlighter ink in light mode; in dark mode, a deep green from
+       the green splash, since a yellow dark enough for light text turns
+       muddy, and a pink would compete with the title's pink splash. */
+    --color-highlight: light-dark(#ffe27a, #2c6a46);
+    /* Button hover fill and the theme switch's thumb: a slightly heavier
+       ink than the highlighter in light mode, and a deeper green in dark.
+       Text and icons on it are normal size, so it needs 7:1, stricter than
+       the title's 4.5:1 on --color-highlight. */
+    --color-highlight-pool: light-dark(#fbd450, #1f5535);
+    /* The title's "AI" sits in white on the logo's splash; the title is
+       large text, so the pair needs 4.5:1. Both are the same in either
+       theme, like the logo, and the splash color is the logo's. */
+    --color-title-splash: #d6336c;
+    --color-title-splash-text: #ffffff;
+    /* Paint splashes behind the intro, in the tape's and highlighter's
+       hues. Translucent, so overlapping splashes mix and none competes
+       with the title's. On the dark desk the hues deepen, since light paint
+       there turns muddy. A rim in the same color, a little lighter,
+       overlaps the fill's edge, so the edge reads stronger, as a watercolor
+       wash dries. */
+    --color-splash-blue: light-dark(rgb(130 205 255 / 0.35), rgb(40 120 190 / 0.38));
+    --color-splash-green: light-dark(rgb(150 225 185 / 0.35), rgb(60 140 90 / 0.38));
+    --color-splash-lilac: light-dark(rgb(200 180 255 / 0.35), rgb(120 75 170 / 0.38));
+    --color-splash-yellow: light-dark(rgb(255 226 122 / 0.35), rgb(195 145 35 / 0.38));
+    --color-splash-orange: light-dark(rgb(255 200 145 / 0.35), rgb(200 105 45 / 0.38));
+    --color-splash-pink: light-dark(rgb(255 160 185 / 0.35), rgb(180 65 115 / 0.38));
+    --splash-rim-strength: 0.86;
+    --splash-rim-width: 2px;
+    /* On the dark desk the rim reads stronger, so there it keeps only this
+       share of its color. */
+    --splash-rim-dark-share: 75%;
+    /* Tape: pale and translucent in light mode; on the dark desk, the
+       splashes' deeper hues, fainter, so the strips do not glare. */
+    --color-tape-1: light-dark(rgb(255 160 185 / 0.7), rgb(180 65 115 / 0.6));
+    --color-tape-2: light-dark(rgb(130 205 255 / 0.7), rgb(40 120 190 / 0.6));
+    --color-tape-3: light-dark(rgb(150 225 185 / 0.7), rgb(60 140 90 / 0.6));
+    --color-tape-4: light-dark(rgb(200 180 255 / 0.7), rgb(120 75 170 / 0.6));
+    --color-tape-5: light-dark(rgb(255 200 145 / 0.7), rgb(200 105 45 / 0.6));
+    /* The intro's right-hand strip: the pink tape in light mode, and in
+       dark mode the yellow splash's hue, so no pink sits near the title's
+       pink splash. */
+    --color-tape-intro-end: light-dark(var(--color-tape-1), rgb(195 145 35 / 0.6));
     /* Taped paper: a hairline and contact shadow all round, plus a lift
        shadow under the untaped bottom edge only; its negative spread keeps
        it off the top and sides. */
@@ -64,9 +93,16 @@
     --font-size-small: 0.875rem;
     --font-size-body: 1.0625rem;
     --font-size-card-title: 1.375rem;
-    /* The minimum keeps "Playground" on one line in a 320px viewport (400%
-       zoom), where the intro leaves about 5.5 times the title size for it. */
-    --font-size-page-title: clamp(2.25rem, 1.5rem + 5vw, 4rem);
+    /* The page title's size follows the intro's width, sized so "AI
+       Playground", splash gaps included, stays on one line down to a 320px
+       viewport (400% zoom). The rem limits still grow with text-only zoom,
+       and at large text settings the title wraps. */
+    --font-size-page-title: clamp(1.75rem, 13.5cqi, 4rem);
+    /* Space above the title, which narrow screens raise so its splash
+       clears the tape, and below it, which leaves room for the splash's
+       lower arms. */
+    --title-space-above: 0;
+    --title-space-below: var(--space-5);
     --font-weight-display: 800;
     --font-weight-strong: 700;
     --letter-spacing-display: -0.035em;
@@ -90,7 +126,7 @@
     --page-inline: var(--space-4);
     /* Room above the intro; at least half of --tape-block-size, the tape's
        overhang, so the tape stays on screen. */
-    --page-block-start: var(--space-7);
+    --page-block-start: var(--space-6);
     --intro-padding: var(--space-6);
     --dot-spacing: var(--gutter);
     --dot-size: 1px;
@@ -105,6 +141,9 @@
     --layer-link: 1;
     --layer-flag: 2;
     --layer-tape: 3;
+    /* The intro's paper sits above the splashes; the cards follow them in
+       the source, so they paint above without one. */
+    --layer-paper: 1;
 
     --radius: 0.375rem;
     --border-width: 1px;
@@ -116,12 +155,26 @@
 
     /* Card image shape; screenshots of another shape are cropped to it. */
     --card-image-ratio: 16 / 10;
-    /* Highlighter stroke behind "Playground": the lower part of the line,
-       barely past each end of the word, at a slight angle with uneven
-       rounded ends. In em of the title. */
-    --highlight-inset: 0.6em -0.05em 0.1em -0.02em;
-    --highlight-radius: 0.1em 0.2em 0.12em 0.22em;
-    --highlight-tilt: -0.5deg;
+    /* Highlighter stroke behind "Playground": the middle and lower part of
+       the line, rising to the right like a casual swipe. It starts just
+       before the word with a rounded end and runs on past it into a tail
+       that narrows as it rises, like a marker easing off the paper: the
+       right corners are long and shallow (horizontal / vertical radius),
+       the lower one deeper, which pulls the end into a soft point near the
+       top. In em of the title. */
+    --highlight-inset: 0.52em -0.4em 0.18em -0.02em;
+    --highlight-radius: 0.1em 0.7em 0.9em 0.22em / 0.1em 0.12em 0.3em 0.22em;
+    --highlight-tilt: -2deg;
+    /* The splash behind the title's "AI": centered on the letters, nudged
+       right, and sized to them as in the logo. The gaps keep it clear of
+       the paper's edge and of "Playground". In em of the title. */
+    --title-splash-size: 2.4em;
+    --title-splash-nudge: 0.045em;
+    --title-splash-gap-start: 0.25em;
+    --title-splash-gap-end: 0.4em;
+    /* The "AI" and its splash lean back a little, like a stamp set down by
+       hand. */
+    --title-splash-tilt: -5deg;
 
     /* Buttons: a thin line drawn twice, the second pass slightly askew. */
     --button-line: 1px;
@@ -141,6 +194,9 @@
     --tape-block-size: 1.5rem;
     --tape-angle-intro-start: -4deg;
     --tape-angle-intro-end: 3deg;
+    /* About how far the intro tape's highest corner rises above the
+       strip's unrotated top edge: 45px from its center, tilted 4deg. */
+    --tape-intro-rise: 3px;
     /* Torn ends: a jagged edge at each short side of a tape strip. */
     --tape-edge: polygon(
       0 8%, 3% 0, 97% 0, 100% 10%, 98% 28%, 100% 46%, 97% 64%, 100% 82%,
@@ -213,6 +269,17 @@
     :root {
       --page-inline: var(--space-3);
       --intro-padding: var(--space-4);
+      --title-space-above: var(--space-2);
+    }
+  }
+
+  /* Below the wide layout the intro spans the page, and the top of its
+     tape sits as far from the window's top as the intro's sides sit from
+     the window's sides: the side margin, plus the tape's overhang above
+     the intro, plus the rise of its tilted corner. */
+  @media (width < 64rem) {
+    :root {
+      --page-block-start: calc(var(--page-inline) + var(--tape-block-size) / 2 + var(--tape-intro-rise));
     }
   }
 
@@ -261,6 +328,60 @@
   .card:nth-child(7n + 5) { --tape-angle: -5deg; --tape-flip: 1; --tape-shift: 6%; --tape-length: 0.85; --print-turn: 1; }
   .card:nth-child(7n + 6) { --tape-angle: 1.5deg; --tape-flip: -1; --tape-shift: -5%; --tape-length: 1.15; --print-turn: -1; }
   .card:nth-child(7n + 7) { --tape-angle: -2deg; --tape-flip: 1; --tape-shift: 2%; --tape-length: 0.95; --print-turn: 1; }
+
+  /* Splash placement: position as percentages of the intro's row, size in
+     rem, for phones (x, y, size), tablets (tx, ty, tsize), and wide
+     screens (wx, wy, wsize). Below the wide layout the cards fill the
+     page's width, so there every splash peeks out above the intro, past a
+     page edge, or into the gap below the intro, and none sits wholly
+     behind a card. */
+  .splash-blue {
+    --splash-fill: var(--color-splash-blue);
+    --splash-turn: 15deg;
+    --splash-x: 37%; --splash-y: -27%; --splash-size: 26rem;
+    --splash-tx: 56%; --splash-ty: -46%; --splash-tsize: 36rem;
+    --splash-wx: 44%; --splash-wy: -20%; --splash-wsize: 42rem;
+  }
+
+  .splash-green {
+    --splash-fill: var(--color-splash-green);
+    --splash-turn: 120deg;
+    --splash-x: -53%; --splash-y: -8%; --splash-size: 22rem;
+    --splash-tx: -24%; --splash-ty: 45%; --splash-tsize: 22rem;
+    --splash-wx: -18%; --splash-wy: 58%; --splash-wsize: 24rem;
+  }
+
+  .splash-lilac {
+    --splash-fill: var(--color-splash-lilac);
+    --splash-turn: -40deg;
+    --splash-x: -42%; --splash-y: 79%; --splash-size: 19rem;
+    --splash-tx: 43%; --splash-ty: 90%; --splash-tsize: 14rem;
+    --splash-wx: 30%; --splash-wy: -28%; --splash-wsize: 15rem;
+  }
+
+  .splash-yellow {
+    --splash-fill: var(--color-splash-yellow);
+    --splash-turn: 60deg;
+    --splash-x: 47%; --splash-y: 86%; --splash-size: 18rem;
+    --splash-tx: 72%; --splash-ty: 61%; --splash-tsize: 21rem;
+    --splash-wx: 79%; --splash-wy: 52%; --splash-wsize: 24rem;
+  }
+
+  .splash-orange {
+    --splash-fill: var(--color-splash-orange);
+    --splash-turn: 200deg;
+    --splash-x: 56%; --splash-y: 48%; --splash-size: 19rem;
+    --splash-tx: -26%; --splash-ty: -9%; --splash-tsize: 24rem;
+    --splash-wx: -18%; --splash-wy: -18%; --splash-wsize: 26rem;
+  }
+
+  .splash-pink {
+    --splash-fill: var(--color-splash-pink);
+    --splash-turn: -20deg;
+    --splash-x: -40%; --splash-y: 33%; --splash-size: 12rem;
+    --splash-tx: 26%; --splash-ty: -26%; --splash-tsize: 13rem;
+    --splash-wx: 91%; --splash-wy: -14%; --splash-wsize: 12rem;
+  }
 }
 
 /* BASE */
@@ -334,6 +455,12 @@
     overflow: hidden;
   }
 
+  /* A link's last word and its trailing icon, kept on one line, so the
+     icon never wraps onto a line of its own. */
+  .link-end {
+    white-space: nowrap;
+  }
+
   /* Hidden on screen, still read by screen readers. */
   .visually-hidden {
     position: absolute;
@@ -347,15 +474,27 @@
 
 /* COMPONENTS */
 @layer components {
-  /* PAGE GRID */
+  /* PAGE GRID: the full window's width, with padding that centers a
+     column of --page-max. The splashes reach past the column into the
+     window's edges, and clip cuts them there, so they never widen the
+     page; it clips sideways only, and makes no scroll container. */
   .page {
     display: grid;
     grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
     column-gap: var(--gutter);
     row-gap: var(--space-7);
-    max-inline-size: var(--page-max);
-    margin-inline: auto;
-    padding: var(--page-block-start) var(--page-inline) var(--space-7);
+    padding-block: var(--page-block-start) var(--space-7);
+    padding-inline: max(var(--page-inline), (100% - var(--page-max)) / 2 + var(--page-inline));
+    overflow-x: clip;
+  }
+
+  /* Below 40rem every block spans the full width, so the column gaps do
+     nothing, and with large text the eleven gaps of --gutter alone can be
+     wider than the window, which would push the content past the clip. */
+  @media (width < 40rem) {
+    .page {
+      column-gap: 0;
+    }
   }
 
   /* PAPER: the intro and card sheets. */
@@ -392,7 +531,7 @@
   .intro::after {
     inset-inline-end: var(--intro-padding);
     rotate: var(--tape-angle-intro-end);
-    background: var(--color-tape-1);
+    background: var(--color-tape-intro-end);
   }
 
   /* Color, angle, position, length, and flip come from the per-card
@@ -406,18 +545,44 @@
     background: var(--tape-color);
   }
 
-  /* INTRO */
+  /* INTRO: it shares the first row with the splashes and sits above them.
+     It is the title's size container, so the title's size follows the
+     intro's width. */
   .intro {
+    z-index: var(--layer-paper);
     grid-column: 1 / -1;
+    grid-row: 1;
     padding: var(--intro-padding);
+    container-type: inline-size;
   }
 
-  /* Isolation keeps the highlighter stroke, drawn behind the text, above
-     the intro's paper. */
+  /* Isolation keeps the highlighter stroke and the "AI" splash, drawn
+     behind the text, above the intro's paper. */
   .intro h1 {
     isolation: isolate;
-    margin-block: 0 var(--space-4);
+    margin-block: var(--title-space-above) var(--title-space-below);
     font-size: var(--font-size-page-title);
+  }
+
+  /* "AI" in white on the logo's splash, tilted with it. An inline box
+     cannot rotate, so it is an inline block. */
+  .ai {
+    position: relative;
+    display: inline-block;
+    margin-inline: var(--title-splash-gap-start) var(--title-splash-gap-end);
+    color: var(--color-title-splash-text);
+    rotate: var(--title-splash-tilt);
+  }
+
+  .ai-splash {
+    position: absolute;
+    z-index: var(--layer-behind);
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    inline-size: var(--title-splash-size);
+    block-size: var(--title-splash-size);
+    translate: calc(-50% + var(--title-splash-nudge)) -50%;
+    fill: var(--color-title-splash);
   }
 
   .intro p {
@@ -446,6 +611,62 @@
     border-radius: var(--highlight-radius);
     background: var(--color-highlight);
     rotate: var(--highlight-tilt);
+  }
+
+  /* SPLASHES: paint splashes on the desk around the intro, in the intro's
+     row. Their placement and color come from the per-splash blocks in the
+     tokens layer. */
+  .splashes {
+    position: relative;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    pointer-events: none;
+  }
+
+  .splash {
+    position: absolute;
+    inset-block-start: var(--splash-y);
+    inset-inline-start: var(--splash-x);
+    inline-size: var(--splash-size);
+    rotate: var(--splash-turn);
+    fill: var(--splash-fill);
+    stroke: light-dark(var(--splash-fill),
+        color-mix(in srgb, var(--splash-fill) var(--splash-rim-dark-share), transparent));
+    stroke-opacity: var(--splash-rim-strength);
+    stroke-width: var(--splash-rim-width);
+    stroke-linejoin: round;
+  }
+
+  @media (40rem <= width < 64rem) {
+    .splash {
+      inset-block-start: var(--splash-ty);
+      inset-inline-start: var(--splash-tx);
+      inline-size: var(--splash-tsize);
+    }
+  }
+
+  @media (width >= 64rem) {
+    .splash {
+      inset-block-start: var(--splash-wy);
+      inset-inline-start: var(--splash-wx);
+      inline-size: var(--splash-wsize);
+    }
+  }
+
+  /* Forced colors repaint text in the system text color, which would not
+     show on the title's splash, and the splashes are decoration, so all of
+     them go. Without its splash, "AI" drops the tilt and the gaps that
+     cleared it, and reads as plain text beside "Playground". */
+  @media (forced-colors: active) {
+    .splashes,
+    .ai-splash {
+      display: none;
+    }
+
+    .ai {
+      margin-inline: 0;
+      rotate: none;
+    }
   }
 
   /* GALLERY: a subgrid, so cards span the page's own columns. */
@@ -888,10 +1109,13 @@
     color: var(--color-text-muted);
   }
 
+  /* On narrow screens the credit line and the theme switch stack, the
+     switch below at the left. From 40rem they sit side by side, and the
+     credit line wraps in its own column beside the switch. */
   .site-footer-inner {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: start;
     gap: var(--space-3) var(--space-5);
     max-inline-size: var(--page-max);
     margin: 0 auto;
@@ -902,14 +1126,30 @@
     margin: 0;
   }
 
+  @media (width >= 40rem) {
+    .site-footer-inner {
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .site-footer-inner p {
+      flex: 1;
+    }
+  }
+
   /* THEME SWITCH: a sliding toggle over native radios, which stay focusable
      though hidden, so keyboard use and announcements come from the browser.
      The script removes the hidden attribute; without it the switch could
-     not work. The auto margin keeps it at the right edge, also when it
-     wraps under the credit line. */
+     not work. Stacked under the credit line on narrow screens, it lines up
+     with the text; beside it, the auto margin keeps it at the right edge. */
   .theme-switch:not([hidden]) {
     display: flex;
-    margin-inline-start: auto;
+  }
+
+  @media (width >= 40rem) {
+    .theme-switch:not([hidden]) {
+      margin-inline-start: auto;
+    }
   }
 
   /* Forced colors mode overrides color-scheme, so a theme choice would

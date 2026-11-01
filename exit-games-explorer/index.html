@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EXIT Games Explorer</title>
+<meta name="description" content="Narrow the 46 EXIT games by difficulty, rating, theme and age, read each game's details, and compare up to four side by side.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<script>
+  /* Applies a theme saved by the footer's switch before the first paint, so the
+     page never flashes the other theme. The key is shared with the gallery. */
+  try {
+    const theme = localStorage.getItem('ai-playground-theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  } catch { }
+</script>
+<style>
+@layer tokens, base, layout, components, type;
+
+/* ---------- Tokens: every font, color, size and space comes from here ---------- */
+@layer tokens {
+  :root {
+    --font-body: "Instrument Sans", system-ui, sans-serif;
+    --font-heading: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --heading-weight: 800;
+    --heading-tracking: 0.01em;
+
+    --weight-regular: 400;
+    --weight-semibold: 600;
+
+    --leading-tight: 1.05;
+    --leading-snug: 1.25;
+    --leading-body: 1.5;
+
+    --step--1: 0.875rem;
+    --step-0: 1rem;
+    --step-1: 1.125rem;
+    --step-2: clamp(1.375rem, 1.2rem + 0.6vw, 1.625rem);
+    --step-3: clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
+    --step-4: clamp(2.5rem, 1.8rem + 3vw, 4rem);
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    --space-4: 1.5rem;
+    --space-5: 2.5rem;
+
+    /* Spacing roles: every margin, padding and gap names one of these */
+    --gap-hair: var(--space-1);      /* icon to its text, dot to dot */
+    --gap-tight: var(--space-2);     /* related controls side by side; a label to its value */
+    --gap-stack: var(--space-3);     /* items stacked inside one component */
+    --gap-section: var(--space-4);   /* sections inside a dialog or panel; cards in the grid */
+    --gap-region: var(--space-5);    /* the page's big areas */
+    --inset: var(--space-4);         /* padding of containers: page edge, dialogs, sheet, panel */
+    --inset-card: var(--space-3);    /* padding of cards, score boxes, table cells, bars */
+
+    --radius-s: 0.375rem;
+    --radius-m: 0.75rem;
+    --radius-pill: 999px;
+    --page-max: 80rem;
+    --panel-width: 22rem;
+    --dialog-max: 46rem;
+    --card-min: 19rem;
+    --target-min: 2.75rem;
+    --target-compact: 2rem;
+    --option-height: 2.25rem;
+    --tray-clearance: 6rem;
+    --focus-width: 3px;
+    --focus-offset: 3px;
+    --switch-option: var(--target-min);
+    --switch-icon: 1.125rem;
+
+    /* Each color is a light and dark pair; the page's color scheme picks one */
+    --color-bg: light-dark(#F4F2EE, #131418);
+    --color-surface: light-dark(#FFFFFF, #1C1E23);
+    --color-stage: light-dark(#E8E4DC, #2A2D34);
+    --color-ink: light-dark(#1D1C21, #EEECE7);
+    --color-ink-muted: light-dark(#4B4851, #C0BDC6);
+    --color-line: light-dark(#D9D4CA, #34373F);
+    /* Borders of controls: the 3:1 non-text floor, firmer than the card lines */
+    --color-control-line: light-dark(#7D776C, #72757E);
+    --color-accent: light-dark(#0B565C, #82DADF);
+    --color-accent-soft: light-dark(#DCEEEF, #143337);
+    --color-accent-strong: light-dark(#073B40, #A6E6EA);
+    --color-on-accent: light-dark(#FFFFFF, #0B1F21);
+    --color-great: light-dark(#0B565C, #82DADF);
+    --color-great-soft: light-dark(#DCEEEF, #143337);
+    --color-mixed: light-dark(#813017, #F2A285);
+    --color-flag: light-dark(#1D1C21, #EEECE7);
+    --color-on-flag: light-dark(#FFFFFF, #131418);
+    --color-pip-off: light-dark(#CFC9BD, #454952);
+    --color-sticky: light-dark(#EEEAE3, #272A31);
+    --color-shadow: light-dark(rgb(40 30 10 / 0.24), rgb(0 0 0 / 0.7));
+    --color-backdrop: rgb(10 10 14 / 0.6);
+    --shadow-tray: 0 -0.5rem 1.5rem light-dark(rgb(40 30 10 / 0.12), rgb(0 0 0 / 0.4));
+    --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.35);
+    --shadow-strip: 0.625rem;
+    --shadow-ramp: 1.5rem;
+
+    color-scheme: light dark;
+  }
+
+  /* The footer's theme switch forces one scheme; System leaves the device setting in charge */
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  /* Narrow screens: containers sit closer to the edge */
+  @media (max-width: 40rem) {
+    :root { --inset: var(--space-3); --gap-region: var(--space-4); }
+  }
+}
+
+/* ---------- Base ---------- */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  /* Wide screens keep the scrollbar's room so the page behind a centered dialog does not shift.
+     Narrow screens skip it: their full-width dialogs and the sheet cover the page, and a kept
+     gutter would leave an empty strip beside them. */
+  @media (width > 64rem) {
+    html { scrollbar-gutter: stable; }
+  }
+  html:has(dialog[open]) { overflow: hidden; }
+  body { margin: 0; background: var(--color-bg); color: var(--color-ink); }
+  h1, h2, h3, p, ul, dl, dd { margin: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: var(--focus-width) solid var(--color-accent); outline-offset: var(--focus-offset); }
+  img { display: block; max-width: 100%; }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  .icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  /* Targets of in-page links, not controls */
+  [tabindex="-1"]:focus { outline: none; }
+}
+
+/* ---------- Layout ---------- */
+@layer layout {
+  .page { max-width: var(--page-max); margin-inline: auto; padding-inline: var(--inset); }
+  .masthead { padding-block: var(--gap-region) var(--gap-section); }
+  .lede { margin: var(--gap-tight) 0 0; color: var(--color-ink-muted); max-width: 52ch; }
+  .lede blockquote { margin: 0; }
+  .lede-source { margin-block-start: var(--gap-hair); }
+
+  .grid {
+    --columns: 2;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
+    gap: var(--gap-section);
+    padding-block-end: var(--gap-region);
+  }
+  .grid[data-columns="3"] { --columns: 3; }
+  /* Wide screens: two columns, and from 75rem the Columns switch sets the count */
+  @media (width > 64rem) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (width > 75rem) {
+    .grid { grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); }
+  }
+
+  /* The Filters panel beside the results on wide screens; above them on narrow ones */
+  .catalog {
+    display: grid; grid-template-columns: var(--panel-width) minmax(0, 1fr);
+    gap: var(--gap-region); align-items: start;
+  }
+  @media (max-width: 64rem) {
+    .catalog { grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); }
+  }
+
+  /* The tray covers the bottom of the window, so the page keeps room beneath its end */
+  body:has(.tray:not([hidden])) { padding-block-end: var(--tray-clearance); }
+
+  .site-footer { border-block-start: 1px solid var(--color-line); margin-block-start: var(--gap-region); }
+  .footer-inner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: var(--gap-stack) var(--gap-section); padding-block: var(--gap-section);
+  }
+  .footer-text { display: grid; gap: var(--gap-tight); max-width: 60ch; color: var(--color-ink-muted); }
+}
+
+/* ---------- Components: layout, color and spacing only; type comes from the type layer ---------- */
+@layer components {
+  /* Skip link: hidden above the page until it has keyboard focus */
+  .skip-link {
+    position: absolute; z-index: 40;
+    inset-block-start: var(--gap-tight); inset-inline-start: var(--gap-tight);
+    padding: var(--gap-tight) var(--gap-stack); border-radius: var(--radius-pill);
+    background: var(--color-ink); color: var(--color-bg); text-decoration: none;
+    /* The halo in the page background separates the focus ring from what sits beneath */
+    box-shadow: 0 0 0 2px var(--color-bg);
+  }
+  .skip-link:not(:focus) { transform: translateY(calc(-100% - var(--gap-section))); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skip-link { transition: transform 150ms ease; }
+  }
+
+  /* Fields */
+  .field {
+    min-height: var(--target-min); padding-inline: var(--inset-card);
+    border: 1px solid var(--color-control-line); border-radius: var(--radius-m);
+    background: var(--color-surface);
+  }
+  .search { inline-size: 100%; }
+
+  /* Sort: the select keeps its native menu; the arrow is drawn, so it sits one card inset from the edge */
+  .select-wrap { position: relative; display: grid; }
+  select.field {
+    appearance: none; cursor: pointer;
+    padding-inline-end: calc(var(--inset-card) + 1rem + var(--gap-tight));
+  }
+  .select-arrow {
+    position: absolute; inset-inline-end: var(--inset-card); inset-block-start: 50%;
+    translate: 0 -50%; inline-size: 1rem; block-size: 1rem;
+    fill: currentColor; pointer-events: none;
+  }
+  .sort { display: flex; align-items: center; gap: var(--gap-tight); }
+  .sort .select-wrap { flex: 1; min-inline-size: 0; }
+
+  /* Filters panel: search, quick picks and the filter groups, with Clear all filters
+     pinned at the bottom. The page script sets --panel-max to the room between the
+     panel's top and the bottom of the window, so the footer stays in view before the
+     panel sticks; without it the panel fills the window once stuck. */
+  .filters-panel {
+    position: sticky; inset-block-start: var(--gap-stack);
+    max-block-size: var(--panel-max, calc(100dvh - 2 * var(--gap-stack)));
+    display: flex; flex-direction: column; overflow: hidden;
+    border-radius: var(--radius-m);
+    background: var(--color-surface); border: 1px solid var(--color-line);
+  }
+  .filters-panel .bar--foot { justify-content: center; }
+  .filters-body { padding: var(--inset); display: grid; gap: var(--gap-section); align-content: start; }
+  .panel-section { display: grid; gap: var(--gap-tight); }
+  .pick-list { display: flex; flex-wrap: wrap; gap: var(--gap-tight); padding: 0; list-style: none; }
+
+  /* Narrow screens: the Filters button and Sort on one row, the panel moves to the sheet */
+  .controls { display: none; }
+  @media (max-width: 64rem) {
+    .filters-panel { display: none; }
+    .controls { display: flex; gap: var(--gap-tight); margin-block-end: var(--gap-stack); }
+    .controls .sort { flex: 1; min-inline-size: 0; }
+  }
+  .sort .field { inline-size: 100%; }
+
+  /* Filter groups */
+  .filter-group {
+    border: 0; margin: 0; padding: var(--gap-stack) 0 0; min-inline-size: 0;
+    border-block-start: 1px solid var(--color-line);
+  }
+  .filter-group + .filter-group { margin-block-start: var(--gap-stack); }
+  .filter-group:first-child { border-block-start: 0; padding-block-start: 0; }
+  .filter-group legend { float: left; inline-size: 100%; padding: 0; margin-block-end: var(--gap-tight); }
+  .filter-group legend + * { clear: both; }
+  .option {
+    display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--gap-tight);
+    min-block-size: var(--option-height);
+    padding-inline: var(--gap-tight); margin-inline: calc(-1 * var(--gap-tight));
+    border-radius: var(--radius-s); cursor: pointer;
+  }
+  .option:hover { background: var(--color-accent-soft); }
+  .option input { inline-size: 1.125rem; block-size: 1.125rem; margin: 0; accent-color: var(--color-accent); cursor: inherit; }
+  .option input:focus-visible { outline: none; }
+  .option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: 1px; }
+  .option-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-tight); }
+  .option-count, .pick-count { color: var(--color-ink-muted); font-variant-numeric: tabular-nums; }
+  .btn[aria-pressed="true"] .pick-count { color: inherit; }
+  .option.is-empty { color: var(--color-ink-muted); cursor: default; }
+  .option.is-empty:hover { background: none; }
+  .option.is-empty .rating, .option.is-empty .pips { opacity: 0.55; }
+
+  /* Results bar: the count, and Sort and the Columns switch beside it on wide screens */
+  .results-bar {
+    display: flex; flex-wrap: wrap; gap: var(--gap-tight) var(--gap-stack);
+    align-items: center; justify-content: space-between;
+    margin-block-end: var(--gap-stack);
+  }
+  .results-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-tight) var(--gap-section); }
+  @media (max-width: 64rem) {
+    .results-tools { display: none; }
+  }
+
+  /* Columns switch: native radios in the filter option style, side by side */
+  .columns { display: flex; align-items: center; border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+  .columns legend { float: left; padding: 0; margin-inline-end: var(--gap-tight); }
+  .columns .option { margin-inline: 0; }
+  /* Three cards are too narrow below 75rem */
+  @media (max-width: 75rem) {
+    .columns { display: none; }
+  }
+
+  .no-match {
+    grid-column: 1 / -1;
+    display: grid; justify-items: start; gap: var(--gap-stack);
+    padding: var(--inset);
+    background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-m);
+  }
+
+  /* Card */
+  .card {
+    container: card / inline-size;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-m);
+    overflow: clip;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .card { transition: border-color 150ms, box-shadow 150ms; }
+  }
+  .card:has(.compare:checked) {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent);
+  }
+  .card-inner { display: grid; grid-template-rows: auto 1fr; min-height: 100%; }
+  .card-stage {
+    position: relative;
+    background: var(--color-stage);
+    inline-size: 100%;
+    aspect-ratio: 4 / 3;
+    align-self: start;
+  }
+  .card-stage img {
+    position: absolute; inset: var(--inset-card) var(--inset-card) var(--gap-tight);
+    width: calc(100% - 2 * var(--inset-card)); height: calc(100% - var(--inset-card) - var(--gap-tight));
+    object-fit: contain;
+  }
+  .stage-name {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    padding: var(--inset-card); text-align: center;
+  }
+  .card-flag {
+    position: absolute; inset-block-start: var(--gap-tight); inset-inline-start: var(--gap-tight);
+    background: var(--color-flag); color: var(--color-on-flag);
+    padding: var(--gap-hair) var(--gap-tight); border-radius: var(--radius-s);
+  }
+  .card-body { display: flex; flex-direction: column; gap: var(--gap-stack); padding: var(--inset-card); }
+  .card-head { display: grid; gap: var(--gap-tight); }
+  .card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-stack); }
+  .card-year { color: var(--color-ink-muted); }
+  .card-link { color: inherit; text-decoration: none; }
+  .card-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.15em; }
+
+  /* Rating badge: the BoardGameGeek score, or Few ratings when there are too few to show one */
+  .rating, .rating > [aria-hidden] {
+    display: inline-flex; white-space: nowrap; align-items: center; gap: var(--gap-hair);
+  }
+  .rating {
+    padding-inline: var(--gap-tight); border-radius: var(--radius-pill);
+    background: var(--color-great-soft); color: var(--color-great);
+  }
+  .rating svg { width: 0.9em; height: 0.9em; fill: currentColor; }
+  .rating-source { margin-inline-start: var(--gap-hair); }
+  .rating--none { background: var(--color-stage); color: var(--color-ink-muted); }
+
+  /* Facts */
+  .facts {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap-stack);
+    padding-block-start: var(--gap-stack); border-block-start: 1px solid var(--color-line);
+  }
+  .fact { min-width: 0; }
+  .fact dt { color: var(--color-ink-muted); }
+  .fact dd { font-variant-numeric: tabular-nums; }
+  .fact--wide { grid-column: 1 / -1; }
+  .fact dd small { color: var(--color-ink-muted); }
+
+  /* Difficulty: five dots, like the LEVEL scale printed on each box */
+  .level { display: flex; align-items: center; gap: var(--gap-tight); white-space: nowrap; }
+  .pips { display: inline-flex; gap: var(--gap-hair); }
+  .pips i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--color-pip-off); }
+  .pips i.on { background: var(--color-accent); }
+  .pips i.half { background: linear-gradient(90deg, var(--color-accent) 50%, var(--color-pip-off) 50%); }
+
+  /* Compare checkbox: the filter option row, in the card's bottom-right corner */
+  .card-body .compare-check { align-self: flex-end; margin-block-start: auto; }
+
+  /* Wider cards: photo beside the details */
+  @container card (min-width: 34rem) {
+    .card-inner { grid-template-columns: 9rem 1fr; grid-template-rows: none; }
+    .card-stage { aspect-ratio: auto; align-self: stretch; }
+    .facts { grid-template-columns: repeat(4, auto); justify-content: space-between; }
+    /* A value with a small note wraps at the note; a bare value, such as a price, stays whole */
+    .fact dd:not(:has(small)) { white-space: nowrap; }
+  }
+
+  /* Thumbnails in the tray and the compare headers; a game without a photo gets the bare tint */
+  .thumb { inline-size: var(--thumb, 2rem); block-size: var(--thumb, 2rem); object-fit: contain; flex: none; }
+  .thumb--empty { background: var(--color-stage); border-radius: var(--radius-s); }
+
+  /* Compare tray */
+  .tray {
+    position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 6;
+    background: var(--color-surface); border-block-start: 1px solid var(--color-line);
+    box-shadow: var(--shadow-tray);
+  }
+  /* One line, never wrapping, until the note needs its own line */
+  .tray-inner { display: flex; flex-wrap: nowrap; gap: var(--gap-tight); align-items: center; padding-block: var(--inset-card); }
+  .tray-inner:has(.tray-note:not(:empty)) { flex-wrap: wrap; }
+  .tray-items { display: flex; gap: var(--gap-tight); flex: 1; min-inline-size: 0; flex-wrap: nowrap; padding: 0; list-style: none; }
+  .tray-item {
+    display: flex; align-items: center; gap: var(--gap-tight);
+    flex: 0 1 auto; min-inline-size: 0;
+    padding-inline-start: var(--gap-tight);
+    border: 1px solid var(--color-line); border-radius: var(--radius-m); background: var(--color-bg);
+  }
+  .tray-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tray-count { color: var(--color-ink-muted); white-space: nowrap; }
+  .tray-note { flex-basis: 100%; }
+  .tray-note:empty { display: none; }
+
+  @media (max-width: 40rem) {
+    .tray-count { display: none; }
+    /* Below about 380px four thumbnails and the button take two rows, and the page keeps room for both */
+    .tray-inner { flex-wrap: wrap; }
+    @media (max-width: 24rem) {
+      body { --tray-clearance: 9rem; }
+    }
+    .tray-items { min-inline-size: auto; gap: var(--gap-hair); }
+    .tray-item { flex: none; gap: 0; padding-inline: var(--gap-hair); }
+    .tray-item .tray-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    /* Four remove buttons push Compare off a phone screen; games are removed from their cards, Details or Compare */
+    .tray-item [data-remove] { display: none; }
+    .tray .btn--primary { margin-inline-start: auto; white-space: nowrap; }
+  }
+
+  /* Dialog shell, shared by Details and Compare */
+  .details {
+    inline-size: min(var(--dialog-max), 100% - 2 * var(--inset));
+    max-block-size: min(54rem, 100dvh - 2 * var(--inset));
+    padding: 0; border: 0; border-radius: var(--radius-m);
+    background: var(--color-surface); color: var(--color-ink);
+    box-shadow: var(--shadow-dialog);
+    overflow: hidden;
+  }
+  .details[open] { display: flex; flex-direction: column; }
+  .details::backdrop, .sheet::backdrop { background: var(--color-backdrop); }
+
+  /* Bars and panes: every panel that scrolls between a header and a footer (Details, the
+     Filters panel, the sheet) shares the compare table's treatment. The bars sit on the
+     sticky tint with a firm edge; where scroll-driven animations are supported, a shadow
+     fades in under the header once content scrolls beneath it, and a shadow above the
+     footer shows while more content waits below. */
+  .bar {
+    position: relative; z-index: 1;
+    display: flex; justify-content: space-between; align-items: center; gap: var(--gap-tight);
+    padding: var(--gap-tight) var(--gap-tight) var(--gap-tight) var(--inset);
+    background: var(--color-sticky);
+  }
+  .bar--head { border-block-end: 1px solid var(--color-control-line); }
+  .bar--foot { border-block-start: 1px solid var(--color-control-line); padding-inline-start: var(--gap-tight); }
+  .pane { overflow-y: auto; flex: 1; min-block-size: 0; overscroll-behavior: contain; scroll-timeline: --pane y; }
+  .has-pane { timeline-scope: --pane; }
+  .bar--head::after, .bar--foot::before {
+    content: ""; position: absolute; inset-inline: 0; block-size: var(--shadow-strip);
+    pointer-events: none; opacity: 0;
+  }
+  .bar--head::after { inset-block-start: 100%; background: linear-gradient(to bottom, var(--color-shadow), transparent); }
+  .bar--foot::before { inset-block-end: 100%; background: linear-gradient(to top, var(--color-shadow), transparent); }
+  @supports (animation-timeline: scroll()) {
+    .has-pane .bar--head::after {
+      animation: shadow-in linear both; animation-timeline: --pane; animation-range: 0 var(--shadow-ramp);
+    }
+    .has-pane .bar--foot::before {
+      animation: shadow-out linear both; animation-timeline: --pane; animation-range: calc(100% - var(--shadow-ramp)) 100%;
+    }
+  }
+  .details-main { padding: var(--inset); display: grid; gap: var(--gap-section); }
+  .details-head { display: grid; gap: var(--gap-tight); }
+  /* The card's chip, type and year line, with Compare at its end */
+  .details-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
+  .details .dialog-title { min-inline-size: 0; }
+  .details .facts { display: flex; flex-wrap: wrap; gap: var(--gap-stack) var(--gap-section); }
+  .section { display: grid; gap: var(--gap-tight); align-content: start; }
+  .story { max-width: 60ch; }
+  .tags { display: flex; flex-wrap: wrap; gap: var(--gap-tight); padding: 0; list-style: none; }
+  .tag { padding-inline: var(--gap-tight); border-radius: var(--radius-pill); background: var(--color-bg); border: 1px solid var(--color-line); }
+  .proscons { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--gap-section); }
+  .proscons ul { padding: 0; list-style: none; display: grid; gap: var(--gap-tight); align-content: start; }
+  .proscons li { display: grid; grid-template-columns: 1rem 1fr; gap: var(--gap-tight); }
+  .proscons svg { width: 1rem; height: 1rem; margin-block-start: 0.2em; }
+  .pro svg { fill: var(--color-great); }
+  .con svg { fill: var(--color-mixed); }
+
+  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--gap-tight); }
+  .score { padding: var(--inset-card); border-radius: var(--radius-m); background: var(--color-bg); }
+  .score dt { color: var(--color-ink-muted); }
+  .score dd { font-variant-numeric: tabular-nums; }
+  .score-scale, .score-count { color: var(--color-ink-muted); }
+  .score-count { display: block; }
+
+  .stores { display: flex; flex-wrap: wrap; gap: var(--gap-tight) var(--gap-section); padding: 0; list-style: none; }
+  .store {
+    color: var(--color-accent);
+    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
+  }
+  .store:hover { text-decoration-thickness: 2px; }
+  .store svg { width: 0.8em; height: 0.8em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: -0.05em; }
+
+  @media (max-width: 44rem) {
+    .details { inline-size: 100%; max-inline-size: 100%; max-block-size: 100dvh; block-size: 100dvh; border-radius: 0; }
+  }
+
+  /* Compare dialog: the same shell as Details, wider, with a table that scrolls both ways.
+     The header row and the label column stay put on the sticky tint with a firm edge.
+     Where scroll-driven animations are supported, shadows add depth cues: one under the
+     header once the rows scroll beneath it, one beside the labels once the games scroll
+     beneath them, and one at each far edge while more content waits there. */
+  .details--compare { --dialog-max: 72rem; }
+  .compare-frame { --label-col: 9rem; --game-col-min: 12rem; position: relative; flex: 1; min-block-size: 0; display: flex; }
+  .compare-scroll {
+    overflow: auto; flex: 1; overscroll-behavior: contain;
+    scroll-timeline: --compare-x x, --compare-y y;
+  }
+  /* The game columns share the width left of the labels; the table widens past the dialog only below the minimum column width */
+  .compare-table {
+    border-collapse: separate; border-spacing: 0; inline-size: 100%; table-layout: fixed;
+    min-inline-size: calc(var(--label-col) + var(--games) * var(--game-col-min));
+  }
+  .compare-table th, .compare-table td {
+    padding: var(--inset-card);
+    border-block-end: 1px solid var(--color-line);
+    text-align: start; vertical-align: top;
+  }
+  .compare-table col.label-col { inline-size: var(--label-col); }
+
+  /* Sticky header row and label column */
+  .compare-table thead th {
+    position: sticky; inset-block-start: 0; z-index: 2;
+    background: var(--color-sticky);
+    border-block-end: 1px solid var(--color-control-line);
+  }
+  /* Layers: game headers 2, label column 3 (so game headers and their shadow slide under it), corner 4 */
+  .compare-table tbody th, .compare-table thead th:first-child {
+    position: sticky; inset-inline-start: 0; z-index: 3;
+    background: var(--color-sticky);
+    border-inline-end: 1px solid var(--color-control-line);
+  }
+  .compare-table thead th:first-child { z-index: 4; }
+
+  /* The photo and the remove button share a row, so a long name gets the column's full width beneath */
+  .compare-head { --thumb: 3rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap-tight); align-items: center; }
+  .compare-head .thumb { grid-column: 1; grid-row: 1; }
+  .compare-head .btn { grid-column: 2; grid-row: 1; }
+  .compare-head .compare-name { grid-column: 1 / -1; grid-row: 2; overflow-wrap: anywhere; }
+  .compare-table ul { padding-inline-start: var(--gap-stack); display: grid; gap: var(--gap-hair); }
+  .compare-table .rating { white-space: normal; }
+  .compare-table .stores { gap: var(--gap-hair); flex-direction: column; padding: 0; }
+
+  /* Shadow strips: drawn by pseudo-elements, hidden until the scroll position calls for them */
+  .compare-table thead th::after,
+  .compare-frame::before,
+  .compare-frame::after { content: ""; }
+  .compare-table thead th::after,
+  .compare-shade,
+  .compare-frame::before,
+  .compare-frame::after { position: absolute; pointer-events: none; opacity: 0; }
+  /* Under the header: one strip per header cell, the corner's included, so it reads as one line */
+  .compare-table thead th::after {
+    inset-inline: 0; inset-block-start: 100%; block-size: var(--shadow-strip);
+    background: linear-gradient(to bottom, var(--color-shadow), transparent);
+  }
+  /* Beside the label column: one full-height strip over the whole table */
+  .compare-shade {
+    inset-block: 0; inset-inline-start: var(--label-col); inline-size: var(--shadow-strip);
+    background: linear-gradient(to right, var(--color-shadow), transparent);
+    z-index: 4;
+  }
+  .compare-frame::after {
+    inset-block: 0; inset-inline-end: 0; inline-size: calc(3 * var(--shadow-strip));
+    background: linear-gradient(to left, var(--color-shadow), transparent);
+    z-index: 4;
+  }
+  .compare-frame::before {
+    inset-inline: 0; inset-block-end: 0; block-size: calc(2 * var(--shadow-strip));
+    background: linear-gradient(to top, var(--color-shadow), transparent);
+    z-index: 4;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .compare-frame { timeline-scope: --compare-x, --compare-y; }
+    .compare-table thead th::after {
+      animation: shadow-in linear both; animation-timeline: --compare-y; animation-range: 0 var(--shadow-ramp);
+    }
+    .compare-shade {
+      animation: shadow-in linear both; animation-timeline: --compare-x; animation-range: 0 var(--shadow-ramp);
+    }
+    .compare-frame::after {
+      animation: shadow-out linear both; animation-timeline: --compare-x; animation-range: calc(100% - var(--shadow-ramp)) 100%;
+    }
+    .compare-frame::before {
+      animation: shadow-out linear both; animation-timeline: --compare-y; animation-range: calc(100% - var(--shadow-ramp)) 100%;
+    }
+  }
+  @keyframes shadow-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes shadow-out { from { opacity: 1; } to { opacity: 0; } }
+
+  @media (max-width: 44rem) {
+    .compare-frame { --label-col: 5.5rem; }
+    /* Two games fit, and a sliver of the next one peeks in to show there is more */
+    .compare-table { min-inline-size: 0; }
+    .compare-table col.game-col { inline-size: calc((100vw - var(--label-col) - var(--gap-section)) / 2); }
+    .compare-table th, .compare-table td { padding: var(--gap-tight); }
+    .compare-scroll { scroll-snap-type: x mandatory; scroll-padding-inline-start: var(--label-col); }
+    .compare-table thead th:not(:first-child) { scroll-snap-align: start; }
+  }
+
+  /* Bottom sheet holding the Filters content on narrow screens */
+  .sheet {
+    margin: auto 0 0; inline-size: 100%; max-inline-size: 100%; max-block-size: 85dvh;
+    padding: 0; border: 0; border-radius: var(--radius-m) var(--radius-m) 0 0;
+    background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-dialog);
+  }
+  .sheet[open] { display: flex; flex-direction: column; }
+  /* Show n games fills its row; Clear all filters sits centered on the row below */
+  .sheet .bar--foot { flex-wrap: wrap; justify-content: center; }
+  .sheet .bar--foot .btn--primary { flex: 1 1 100%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet, .sheet::backdrop { transition: translate 250ms ease, opacity 250ms ease, display 250ms allow-discrete, overlay 250ms allow-discrete; }
+    .sheet { translate: 0 100%; }
+    .sheet[open] { translate: 0 0; }
+    @starting-style { .sheet[open] { translate: 0 100%; } }
+    .sheet::backdrop { opacity: 0; }
+    .sheet[open]::backdrop { opacity: 1; }
+    @starting-style { .sheet[open]::backdrop { opacity: 0; } }
+  }
+
+  /* Buttons: one base and its variants. Hover tints, focus draws a ring that eases outward, pressed toggles fill. */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--gap-tight);
+    min-height: var(--target-min); padding-inline: var(--gap-stack);
+    border: 1px solid var(--color-control-line); border-radius: var(--radius-m);
+    background: var(--color-surface); color: var(--color-ink);
+    cursor: pointer;
+    outline: var(--focus-width) solid transparent; outline-offset: 0;
+  }
+  .btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+  .btn:focus-visible { outline-color: var(--color-accent); outline-offset: var(--focus-offset); }
+  .btn:active { background: var(--color-accent-soft); border-color: var(--color-accent-strong); }
+  .btn[aria-pressed="true"],
+  .btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+  .btn[aria-pressed="true"]:hover,
+  .btn--primary:hover { background: var(--color-accent-strong); border-color: var(--color-accent-strong); }
+  .btn--pill { border-radius: var(--radius-pill); }
+  .btn--icon { min-width: var(--target-min); padding-inline: var(--gap-tight); }
+  .btn--icon svg { width: 1rem; height: 1rem; fill: currentColor; }
+  .btn--quiet { border-color: transparent; background: transparent; }
+  .btn--compact { min-height: var(--target-compact); padding-inline: var(--inset-card); }
+  /* aria-disabled keeps the button focusable; its click handler does nothing */
+  .btn:disabled, .btn:disabled:hover, .btn[aria-disabled="true"], .btn[aria-disabled="true"]:hover {
+    background: var(--color-stage); border-color: transparent; color: var(--color-ink-muted); cursor: default;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn { transition: background-color 120ms ease, border-color 120ms ease, outline-offset 120ms ease; }
+  }
+  @media (forced-colors: active) {
+    .btn[aria-pressed="true"], .btn--primary:not(:disabled) {
+      forced-color-adjust: none;
+      background: Highlight; border-color: Highlight; color: HighlightText;
+    }
+    .btn[aria-disabled="true"] { color: GrayText; border-color: GrayText; }
+  }
+
+  /* Footer theme switch: native radios under a sliding thumb, so keyboard use and
+     announcements come from the browser. The script reveals it; without the script it
+     could not work. Forced colors fix the scheme, so a choice would change nothing there. */
+  .theme-switch:not([hidden]) { display: flex; }
+  @media (forced-colors: active) {
+    .theme-switch:not([hidden]) { display: none; }
+  }
+  .theme-switch-track {
+    position: relative; display: grid; grid-template-columns: repeat(3, var(--switch-option));
+    padding: var(--gap-hair);
+    border: 1px solid var(--color-control-line); border-radius: var(--radius-pill);
+    background: var(--color-surface);
+  }
+  /* The thumb under the checked option; its border keeps the selection visible in forced colors */
+  .theme-switch-track::before {
+    content: ""; position: absolute;
+    inset-block: var(--gap-hair); inset-inline-start: var(--gap-hair);
+    inline-size: calc((100% - 2 * var(--gap-hair)) / 3);
+    border: 1px solid var(--color-control-line); border-radius: var(--radius-pill);
+    background: var(--color-accent-soft);
+    translate: calc(var(--switch-index) * 100%) 0;
+  }
+  .theme-switch-track:has(input[value="light"]:checked) { --switch-index: 0; }
+  .theme-switch-track:has(input[value="dark"]:checked) { --switch-index: 1; }
+  .theme-switch-track:has(input[value="system"]:checked) { --switch-index: 2; }
+  @media (prefers-reduced-motion: no-preference) {
+    .theme-switch-track::before { transition: translate 300ms ease; }
+    .theme-option { transition: background-color 120ms ease; }
+  }
+  .theme-option {
+    position: relative; display: grid; place-items: center;
+    block-size: var(--switch-option); border-radius: var(--radius-pill); cursor: pointer;
+  }
+  .theme-option:hover:not(:has(input:checked)) { background: var(--color-accent-soft); }
+  /* The radio is hidden, so the option shows its focus ring, drawn inside the track */
+  .theme-option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: calc(var(--focus-width) * -1); }
+  .theme-option svg { inline-size: var(--switch-icon); block-size: var(--switch-icon); }
+}
+
+/* ---------- Type: eight text roles; nothing outside this layer sets size, weight, leading or family ---------- */
+@layer type {
+  body {
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-body);
+  }
+
+  /* Display: the page title */
+  .masthead h1 {
+    font: var(--heading-weight) var(--step-4) / var(--leading-tight) var(--font-heading);
+    letter-spacing: var(--heading-tracking);
+  }
+
+  /* Title: card names, dialog and panel headings, rating numbers, a missing photo's name */
+  .card-title, .dialog-title, .score-value, .stage-name {
+    font: var(--heading-weight) var(--step-2) / var(--leading-tight) var(--font-heading);
+    letter-spacing: var(--heading-tracking);
+    text-wrap: balance;
+  }
+
+  /* Lead: the intro and the dialog's bottom line */
+  .lede, .bottom-line { font-size: var(--step-1); }
+
+  /* Strong: fact values, every button, the results count, the tray's count, and the skip link */
+  .fact dd, .btn, .compare-name, .results-count, .tray-count, .skip-link {
+    font-size: var(--step-0);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-snug);
+  }
+
+  /* Small: supporting text */
+  .verdict, .card-year, .fact dd small, .score-scale, .score-count,
+  .tray-note, .tag, .option-count, .pick-count, .compare-check, .footer-text, .lede-source {
+    font-size: var(--step--1);
+    font-weight: var(--weight-regular);
+  }
+
+  /* Small strong: labels, section titles, and badges */
+  .card-type, .fact dt, .section-title, .score dt,
+  .rating, .card-flag, .tray-item, .compare-table th,
+  .filter-group legend, .columns legend, .sort-label, .btn--compact {
+    font-size: var(--step--1);
+    font-weight: var(--weight-semibold);
+  }
+
+  /* A checked filter option reads in the strong weight */
+  .filter-group .option:has(:checked) .option-label { font-weight: var(--weight-semibold); }
+}
+</style>
+<script src="games.js"></script>
+</head>
+<body>
+
+<svg class="icon-sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-star" viewBox="0 0 16 16"><path d="M8 1l2.1 4.6 5 .5-3.8 3.3 1.1 4.9L8 11.8 3.6 14.3l1.1-4.9L.9 6.1l5-.5z"/></symbol>
+  <symbol id="i-triangle" viewBox="0 0 16 16"><path d="M8 1.5 15 14H1z"/></symbol>
+  <symbol id="i-ring" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M6.2 11.6 2.8 8.2l-1.4 1.4 4.8 4.8L14.6 6l-1.4-1.4z"/></symbol>
+  <symbol id="i-external" viewBox="0 0 16 16"><path d="M9 2h5v5h-1.6V4.7L6.6 10.5 5.5 9.4l5.8-5.8H9zM3 4h4v1.6H4.6v6.8h6.8V10H13v4H3z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 16 16"><path d="M3.4 5.5 8 10.1l4.6-4.6L14 6.9l-6 6-6-6z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 16 16"><path d="M3.4 2 8 6.6 12.6 2 14 3.4 9.4 8l4.6 4.6-1.4 1.4L8 9.4 3.4 14 2 12.6 6.6 8 2 3.4z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-system" viewBox="0 0 24 24">
+    <rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M8 20h8M12 16v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<a class="skip-link" href="#games">Skip to the games</a>
+
+<header class="page masthead">
+  <h1>EXIT Games Explorer</h1>
+  <figure class="lede">
+    <blockquote><p>EXIT: The Game is a series of escape room games for the home. Players must solve riddles and puzzles and crack codes to escape from an imaginary room.</p></blockquote>
+    <figcaption class="lede-source">Publisher description</figcaption>
+  </figure>
+</header>
+
+<div class="page catalog">
+  <!-- Wide screens: the Filters panel beside the results. Its body and Clear button move to the sheet on narrow screens. -->
+  <aside class="filters-panel has-pane" aria-labelledby="panel-title">
+    <div class="bar bar--head">
+      <h2 class="dialog-title" id="panel-title">Filters</h2>
+    </div>
+    <div class="pane" id="panel-pane">
+      <div class="filters-body" id="filters-body"></div>
+    </div>
+    <div class="bar bar--foot" id="panel-foot">
+      <button class="btn" type="button" id="clear-filters">Clear all filters</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Narrow screens: the Filters button, and Sort moves in beside it -->
+    <div class="controls" id="controls">
+      <button class="btn" type="button" id="open-filters"></button>
+    </div>
+
+    <!-- The skip link's target: the games heading, the count and the cards -->
+    <div id="games" tabindex="-1">
+      <h2 class="visually-hidden">Games</h2>
+      <div class="results-bar" id="results-bar">
+        <p class="results-count" id="results-count" aria-live="polite"></p>
+        <div class="results-tools" id="results-tools">
+          <div class="sort" id="sort">
+            <label class="sort-label" id="sort-label" for="sort-select">Sort</label>
+            <div class="select-wrap">
+              <select class="field" id="sort-select"></select>
+              <svg class="select-arrow" aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg>
+            </div>
+          </div>
+          <fieldset class="columns" id="columns">
+            <legend>Columns</legend>
+            <label class="option"><input type="radio" name="columns" value="2"><span class="option-label">2</span></label>
+            <label class="option"><input type="radio" name="columns" value="3"><span class="option-label">3</span></label>
+          </fieldset>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="page footer-inner">
+    <div class="footer-text">
+      <p>The games and box art belong to Kosmos (Thames &amp; Kosmos in the US), and the photos come from the Game Nerdz online store and BoardGameGeek. Fan-made, not affiliated with Kosmos or Thames &amp; Kosmos.</p>
+      <p>Information about these games was collected from a variety of sources including the publisher's website, BoardGameGeek, online retailers, and reviewer blogs. AI assisted with the initial data collection but a human reviewed and is responsible for the content.</p>
+    </div>
+    <div class="theme-switch" role="radiogroup" aria-label="Theme" hidden>
+      <div class="theme-switch-track">
+        <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="light"><svg aria-hidden="true"><use href="#i-sun"/></svg><span class="visually-hidden">Light</span></label>
+        <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg><span class="visually-hidden">Dark</span></label>
+        <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="system"><svg aria-hidden="true"><use href="#i-system"/></svg><span class="visually-hidden">System</span></label>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<aside class="tray" aria-label="Compare" id="tray" hidden>
+  <div class="page tray-inner">
+    <ul class="tray-items" id="tray-items"></ul>
+    <p class="tray-count" id="tray-count"></p>
+    <button class="btn btn--primary" type="button" id="open-compare"></button>
+    <p class="tray-note" id="tray-note" role="status"></p>
+  </div>
+</aside>
+
+<!-- Narrow screens: the same Filters content in a bottom sheet -->
+<dialog class="sheet has-pane" id="filter-sheet" aria-labelledby="sheet-title">
+  <div class="bar bar--head">
+    <h2 class="dialog-title" id="sheet-title">Filters</h2>
+    <form method="dialog"><button class="btn" type="submit">Close</button></form>
+  </div>
+  <div class="pane" id="sheet-pane"></div>
+  <div class="bar bar--foot" id="sheet-foot">
+    <button class="btn btn--primary" type="button" id="show-results"></button>
+  </div>
+</dialog>
+
+<dialog class="details has-pane" id="details" aria-labelledby="d-title">
+  <div class="bar bar--head">
+    <h2 class="dialog-title" id="d-title"></h2>
+    <form method="dialog"><button class="btn" type="submit">Close</button></form>
+  </div>
+  <div class="pane" id="d-pane">
+    <div class="details-main" id="d-main"></div>
+  </div>
+</dialog>
+
+<dialog class="details details--compare" id="compare" aria-labelledby="c-title">
+  <div class="bar bar--head">
+    <h2 class="dialog-title" id="c-title"></h2>
+    <form method="dialog"><button class="btn" type="submit">Close</button></form>
+  </div>
+  <div class="compare-frame">
+    <div class="compare-scroll" tabindex="0" role="region" aria-labelledby="c-title">
+      <table class="compare-table" id="compare-table"></table>
+    </div>
+    <div class="compare-shade" aria-hidden="true"></div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const games = window.GAMES;
+  const MAX_COMPARE = 4;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const icon = (id) => `<svg viewBox="0 0 16 16" aria-hidden="true"><use href="#${id}"/></svg>`;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  /* ---------- Ratings: the BoardGameGeek average; under 50 ratings it is marked as resting on few ---------- */
+  const MIN_RATINGS = 50;
+  const scoreOf = (game) => (game.bggText != null ? Number(game.bggText) : null);
+  const isFew = (game) => !(game.bggCount >= MIN_RATINGS);
+  /* A game sits in its score's range, and also under Few ratings when it has too few; ranges read the score as shown */
+  const RATING_RANGES = [
+    ["top", "7.5 and up", (item) => item.score >= 7.5],
+    ["mid", "7.0 to 7.4", (item) => item.score >= 7 && item.score < 7.5],
+    ["low", "Under 7.0", (item) => item.score != null && item.score < 7],
+    ["few", "Few ratings", (item) => item.few],
+  ];
+  function scoreBadge(item) {
+    const { score, few, game } = item;
+    if (score == null) return `<span class="rating rating--none">${icon("i-ring")}No rating</span>`;
+    const shown = score.toFixed(1);
+    const count = few ? `<span class="rating-source">· ${plural(game.bggCount, "rating")}</span>` : "";
+    const spoken = `BoardGameGeek rating ${shown} out of 10${few ? `, from only ${plural(game.bggCount, "rating")}` : ""}`;
+    return `<span class="rating${few ? " rating--none" : ""}"><span aria-hidden="true">${icon("i-star")}<span>${shown} / 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
+  }
+
+  /* One view per game: the data plus what filtering and sorting need */
+  const items = games.map((game) => ({
+    game,
+    id: game.id,
+    score: scoreOf(game),
+    few: isFew(game),
+    difficultyKey: game.difficulty != null ? String(game.difficulty) : game.difficultyLabel === "Beginner" ? "beginner" : "none",
+    haystack: [game.name, game.story, game.themes.join(" "), game.bottomLine, game.type].join(" ").toLowerCase(),
+    card: null,
+  }));
+  const byId = new Map(items.map((item) => [item.id, item]));
+
+  /* ---------- Filters ---------- */
+  const GROUPS = [
+    {
+      key: "difficulty", legend: "Difficulty", single: false,
+      options: [["2", "Level 2"], ["2.5", "Level 2.5"], ["3", "Level 3"], ["3.5", "Level 3.5"], ["4", "Level 4"], ["4.5", "Level 4.5"], ["beginner", "Beginner"], ["none", "No difficulty listed"]],
+      test: (item, values) => values.includes(item.difficultyKey),
+    },
+    {
+      key: "rating", legend: "Rating", single: false,
+      options: RATING_RANGES.map(([value, label]) => [value, label]),
+      test: (item, values) => RATING_RANGES.some(([value, , inRange]) => values.includes(value) && inRange(item)),
+    },
+    {
+      key: "theme", legend: "Theme", single: false,
+      options: ["Adventure", "Mystery", "Spooky", "Fantasy", "History & art", "Sci-fi", "Holiday"].map((name) => [name, name]),
+      test: (item, values) => item.game.themes.some((theme) => values.includes(theme)),
+    },
+    {
+      key: "type", legend: "Game type", single: false,
+      options: ["Standard", "Game + puzzle", "Family", "Kids", "Advent calendar", "500-piece puzzle"].map((name) => [name, name]),
+      test: (item, values) => values.includes(item.game.type),
+    },
+    {
+      key: "youngest", legend: "Youngest player", single: true,
+      options: [["any", "Any age"], ["7", "5 to 7"], ["9", "8 or 9"], ["11", "10 or 11"], ["15", "12 to 15"]],
+      test: (item, values) => values[0] === "any" || item.game.ages <= Number(values[0]),
+    },
+  ];
+  const groupByKey = Object.fromEntries(GROUPS.map((group) => [group.key, group]));
+
+  const PICKS = [
+    { name: "First game", sets: { type: ["Standard"], difficulty: ["2"] } },
+    { name: "Real challenge", sets: { difficulty: ["3.5", "4", "4.5"] } },
+    { name: "Top rated", sets: { rating: ["top"] } },
+    { name: "With kids", sets: { youngest: ["9"] } },
+    { name: "Spooky", sets: { theme: ["Spooky"] } },
+    { name: "Advent", sets: { type: ["Advent calendar"] } },
+  ];
+
+  const emptySelection = () => ({ difficulty: [], rating: [], theme: [], type: [], youngest: [] });
+  const state = { search: "", selected: emptySelection(), sort: "rating-desc" };
+
+  function searchMatches(item) {
+    const words = state.search.toLowerCase().split(/\s+/).filter(Boolean);
+    return words.every((word) => item.haystack.includes(word));
+  }
+  /* A game passes when it matches the search and every group with a selection; `except` leaves one group out */
+  function matches(item, except) {
+    if (!searchMatches(item)) return false;
+    return GROUPS.every((group) => {
+      const values = state.selected[group.key];
+      return group.key === except || values.length === 0 || group.test(item, values);
+    });
+  }
+  const pickMatches = (item, sets) => Object.entries(sets).every(([key, values]) => groupByKey[key].test(item, values));
+
+  /* ---------- Sorting ---------- */
+  const bare = (name) => name.replace(/^The /, "");
+  const byName = (a, b) => bare(a.game.name).localeCompare(bare(b.game.name));
+  /* Games with no value go last in either direction; every tie sorts by name */
+  const sortBy = (value, direction) => (a, b) => {
+    const x = value(a);
+    const y = value(b);
+    if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
+    return direction * (x - y) || byName(a, b);
+  };
+  /* A box that prints Beginner instead of dots sorts as level 1 */
+  const levelOf = (game) => game.difficulty ?? (game.difficultyLabel === "Beginner" ? 1 : null);
+  const SORTS = [
+    ["rating-desc", "Rating: high to low", (item) => item.score, -1],
+    ["rating-asc", "Rating: low to high", (item) => item.score, 1],
+    ["difficulty-asc", "Difficulty: easiest first", (item) => levelOf(item.game), 1],
+    ["difficulty-desc", "Difficulty: hardest first", (item) => levelOf(item.game), -1],
+    ["price-asc", "Price: low to high", (item) => item.game.priceLow, 1],
+    ["price-desc", "Price: high to low", (item) => item.game.priceLow, -1],
+    ["time-asc", "Play time: shortest first", (item) => item.game.maxMinutes, 1],
+    ["time-desc", "Play time: longest first", (item) => item.game.maxMinutes, -1],
+    ["year-desc", "Year: newest first", (item) => item.game.year, -1],
+    ["year-asc", "Year: oldest first", (item) => item.game.year, 1],
+  ];
+  const comparators = Object.fromEntries(SORTS.map(([key, , value, direction]) => [key, sortBy(value, direction)]));
+
+  /* ---------- Formatting ---------- */
+  /* Whole dollars at each end; a range whose ends round alike reads as one price */
+  function priceText(game) {
+    if (game.priceLow == null) return "Not listed";
+    const low = Math.round(game.priceLow);
+    const high = Math.round(game.priceHigh);
+    return low === high ? `$${low}` : `$${low}–${high}`;
+  }
+  /* "45–75 min per adventure" reads as the time with its unit of play in small text */
+  function timeHtml(text) {
+    const split = text.match(/^(.*?) (per .+)$/);
+    return split ? `${esc(split[1])} <small>${esc(split[2])}</small>` : esc(text);
+  }
+  function pips(value) {
+    return Array.from({ length: 5 }, (_, i) => {
+      const fill = Math.max(0, Math.min(1, value - i));
+      return `<i class="${fill >= 1 ? "on" : fill > 0 ? "half" : ""}"></i>`;
+    }).join("");
+  }
+  const difficultyHtml = (game) =>
+    game.difficulty == null
+      ? esc(game.difficultyLabel)
+      : `<span class="pips" aria-hidden="true">${pips(game.difficulty)}</span>${game.difficulty} / 5`;
+  const difficultyClass = (game) => (game.difficulty == null ? "" : ' class="level"');
+  const playersHtml = (game) => `${esc(game.players)} players`;
+  const thumb = (game) =>
+    game.image
+      ? `<img class="thumb" src="images/${esc(game.image)}" alt="">`
+      : `<span class="thumb thumb--empty" aria-hidden="true"></span>`;
+  const storeLink = (store, game, showGame) =>
+    `<a class="store" href="${esc(store.url)}" target="_blank" rel="noopener">${esc(store.name)}${showGame ? `<span class="visually-hidden"> for ${esc(game.name)}</span>` : ""}<span class="visually-hidden"> (opens in a new tab)</span>${icon("i-external")}</a>`;
+  const storesHtml = (game, showGame) =>
+    game.stores.length
+      ? `<ul class="stores">${game.stores.map((store) => `<li>${storeLink(store, game, showGame)}</li>`).join("")}</ul>`
+      : `<p>${esc(game.noStoreReason)}</p>`;
+  const listHtml = (list) => `<ul>${list.map((text) => `<li>${esc(text)}</li>`).join("")}</ul>`;
+
+  /* ---------- Cards ---------- */
+  function buildCard(item) {
+    const { game } = item;
+    const stage = game.image
+      ? `<img src="images/${esc(game.image)}" alt="" loading="lazy" width="640" height="640">`
+      : `<span class="stage-name" aria-hidden="true">${esc(game.name)}</span>`;
+    const card = document.createElement("article");
+    card.className = "card";
+    card.setAttribute("aria-labelledby", `card-${item.id}`);
+    card.dataset.id = item.id;
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-stage">${stage}${game.tag ? `<span class="card-flag">${esc(game.tag)}</span>` : ""}</div>
+        <div class="card-body">
+          <div class="card-head">
+            <h3 class="card-title"><a class="card-link" id="card-${item.id}" href="#${item.id}">${esc(game.name)}</a></h3>
+            <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
+          </div>
+          <p class="verdict">${esc(game.bottomLine)}</p>
+          <dl class="facts">
+            <div class="fact fact--wide"><dt>Difficulty</dt><dd${difficultyClass(game)}>${difficultyHtml(game)}</dd></div>
+            <div class="fact"><dt>Ages</dt><dd>${game.ages}+</dd></div>
+            <div class="fact"><dt>Players</dt><dd>${playersHtml(game)}</dd></div>
+            <div class="fact"><dt>Time</dt><dd>${timeHtml(game.time)}</dd></div>
+            <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
+          </dl>
+          <label class="option compare-check"><input class="compare" type="checkbox"><span class="option-label">Compare<span class="visually-hidden"> ${esc(game.name)}</span></span></label>
+        </div>
+      </div>`;
+    item.card = card;
+    return card;
+  }
+  items.forEach(buildCard);
+
+  const grid = $("grid");
+  const cardItem = (element) => byId.get(element.closest(".card").dataset.id);
+  grid.addEventListener("click", (event) => {
+    const link = event.target.closest(".card-link");
+    /* Modified clicks keep the browser's own link behavior */
+    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openDetails(cardItem(link), true);
+  });
+  grid.addEventListener("change", (event) => {
+    if (event.target.matches(".compare")) toggleCompare(cardItem(event.target).id);
+  });
+
+  /* ---------- Filter panel markup: one body, built once ---------- */
+  function optionLabel(group, value, label) {
+    const count = `<span class="option-count"></span>`;
+    if (group.key === "difficulty" && !Number.isNaN(Number(value))) {
+      return `<span class="pips" aria-hidden="true">${pips(Number(value))}</span><span>${label} ${count}</span>`;
+    }
+    return `<span>${esc(label)} ${count}</span>`;
+  }
+  $("filters-body").innerHTML = `
+    <div class="panel-section">
+      <label class="section-title" for="search">Search</label>
+      <input class="field search" id="search" type="search" placeholder="Name, theme, or story" autocomplete="off">
+    </div>
+    <div class="panel-section" role="group" aria-labelledby="picks-title">
+      <h3 class="section-title" id="picks-title">Quick picks</h3>
+      <ul class="pick-list">${PICKS.map((pick, i) => `<li><button class="btn btn--pill btn--compact" type="button" aria-pressed="false" data-pick="${i}"><span>${esc(pick.name)} <span class="pick-count"></span></span></button></li>`).join("")}</ul>
+    </div>
+    <div class="panel-section">
+      ${GROUPS.map((group) => `
+        <fieldset class="filter-group">
+          <legend>${group.legend}</legend>
+          <div>${group.options.map(([value, label]) => `
+            <label class="option">
+              <input type="${group.single ? "radio" : "checkbox"}" name="${group.key}" value="${esc(value)}">
+              <span class="option-label">${optionLabel(group, value, label)}</span>
+            </label>`).join("")}
+          </div>
+        </fieldset>`).join("")}
+    </div>`;
+
+  const filtersBody = $("filters-body");
+  const searchInput = $("search");
+  const pickButtons = [...filtersBody.querySelectorAll("[data-pick]")];
+  const inputs = [...filtersBody.querySelectorAll(".option input")];
+  PICKS.forEach((pick, i) => {
+    pickButtons[i].querySelector(".pick-count").textContent = `(${items.filter((item) => pickMatches(item, pick.sets)).length})`;
+  });
+
+  filtersBody.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!input.matches(".option input")) return;
+    const group = groupByKey[input.name];
+    if (group.single) state.selected[group.key] = input.value === "any" ? [] : [input.value];
+    else {
+      const values = state.selected[group.key].filter((value) => value !== input.value);
+      state.selected[group.key] = input.checked ? [...values, input.value] : values;
+    }
+    update();
+  });
+  searchInput.addEventListener("input", () => {
+    state.search = searchInput.value;
+    update();
+  });
+
+  const sameValues = (a, b) => a.length === b.length && a.every((value) => b.includes(value));
+  const pickIsActive = (pick) => state.search === "" && GROUPS.every((group) => sameValues(state.selected[group.key], pick.sets[group.key] ?? []));
+
+  function resetFilters() {
+    state.search = "";
+    state.selected = emptySelection();
+  }
+  filtersBody.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-pick]");
+    if (!button) return;
+    const pick = PICKS[Number(button.dataset.pick)];
+    const wasActive = pickIsActive(pick);
+    resetFilters();
+    if (!wasActive) Object.assign(state.selected, pick.sets);
+    update();
+  });
+  const clearButton = $("clear-filters");
+  clearButton.addEventListener("click", () => {
+    if (clearButton.getAttribute("aria-disabled") === "true") return;
+    resetFilters();
+    update();
+  });
+
+  /* ---------- One update path: counts, options, cards, and every readout ---------- */
+  const sortSelect = $("sort-select");
+  sortSelect.innerHTML = SORTS.map(([key, label]) => `<option value="${key}">${label}</option>`).join("");
+  sortSelect.value = state.sort;
+  sortSelect.addEventListener("change", () => {
+    state.sort = sortSelect.value;
+    update();
+  });
+
+  const resultsCount = $("results-count");
+  const filtersButton = $("open-filters");
+  const showResults = $("show-results");
+  let current = [];
+
+  function appliedCount() {
+    return Object.values(state.selected).reduce((total, values) => total + values.length, 0) + (state.search.trim() ? 1 : 0);
+  }
+  /* A button's text with the applied count in parentheses; screen readers hear " applied" inside them */
+  const withApplied = (text, applied) =>
+    applied ? `<span>${text} (${applied}<span class="visually-hidden"> applied</span>)</span>` : text;
+
+  function update() {
+    const focused = document.activeElement;
+    current = items.filter((item) => matches(item)).sort(comparators[state.sort]);
+
+    searchInput.value = state.search;
+    for (const input of inputs) {
+      const group = groupByKey[input.name];
+      const chosen = state.selected[group.key];
+      input.checked = group.single ? (chosen[0] ?? "any") === input.value : chosen.includes(input.value);
+      const count = items.filter((item) => matches(item, group.key) && (input.value === "any" || group.test(item, [input.value]))).length;
+      const option = input.closest(".option");
+      option.querySelector(".option-count").textContent = `(${count})`;
+      input.disabled = count === 0 && !input.checked;
+      option.classList.toggle("is-empty", input.disabled);
+    }
+    PICKS.forEach((pick, i) => pickButtons[i].setAttribute("aria-pressed", String(pickIsActive(pick))));
+    /* Unchecking an option that gives no games under the other filters disables it; focus moves to a live option instead of dropping to the page */
+    if (focused?.matches?.(".option input") && focused.disabled) {
+      focused.closest("fieldset").querySelector("input:not(:disabled)")?.focus();
+    }
+
+    const applied = appliedCount();
+    resultsCount.textContent = applied ? `${current.length} of ${items.length} games` : `${items.length} games`;
+    filtersButton.innerHTML = withApplied("Filters", applied);
+    clearButton.innerHTML = withApplied("Clear all filters", applied);
+    clearButton.setAttribute("aria-disabled", String(applied === 0));
+    showResults.textContent = `Show ${plural(current.length, "game")}`;
+
+    if (current.length) grid.replaceChildren(...current.map((item) => item.card));
+    else grid.replaceChildren(noMatch());
+  }
+
+  function noMatch() {
+    const box = document.createElement("div");
+    box.className = "no-match";
+    box.innerHTML = `<p>No games match these filters.</p><button class="btn" type="button">${withApplied("Clear all filters", appliedCount())}</button>`;
+    box.querySelector("button").addEventListener("click", () => {
+      resetFilters();
+      update();
+      $("games").focus();
+    });
+    return box;
+  }
+
+  /* ---------- Columns switch: 2 or 3 cards across on wide screens, saved on its own key ---------- */
+  const COLUMNS_KEY = "exit-games-explorer-columns";
+  const columnInputs = [...document.querySelectorAll('#columns input[name="columns"]')];
+  let columns = "2";
+  try {
+    const saved = localStorage.getItem(COLUMNS_KEY);
+    if (saved === "2" || saved === "3") columns = saved;
+  } catch { }
+  grid.dataset.columns = columns;
+  for (const input of columnInputs) {
+    input.checked = input.value === columns;
+    input.addEventListener("change", () => {
+      grid.dataset.columns = input.value;
+      try { localStorage.setItem(COLUMNS_KEY, input.value); } catch { }
+    });
+  }
+
+  /* ---------- Layout switch: the panel body, Clear button and Sort move; nothing is duplicated ---------- */
+  const narrow = matchMedia("(max-width: 64rem)");
+  const sheet = $("filter-sheet");
+  function placeControls() {
+    if (narrow.matches) {
+      $("sheet-pane").append(filtersBody);
+      $("sheet-foot").prepend(clearButton);
+      $("controls").append($("sort"));
+    } else {
+      if (sheet.open) sheet.close();
+      $("panel-pane").append(filtersBody);
+      $("panel-foot").append(clearButton);
+      $("results-tools").prepend($("sort"));
+    }
+    $("sort-label").classList.toggle("visually-hidden", narrow.matches);
+  }
+  narrow.addEventListener("change", placeControls);
+  filtersButton.addEventListener("click", () => sheet.showModal());
+  showResults.addEventListener("click", () => sheet.close());
+
+  /* The panel's height is the room between its top edge, which rises as the page scrolls
+     until the panel sticks, and the bottom of the window, less the gap it keeps from the top. */
+  const panel = document.querySelector(".filters-panel");
+  let frame = 0;
+  function fitPanel() {
+    frame = 0;
+    const gap = parseFloat(getComputedStyle(panel).insetBlockStart);
+    const top = Math.max(panel.getBoundingClientRect().top, gap);
+    panel.style.setProperty("--panel-max", `${window.innerHeight - top - gap}px`);
+  }
+  const queueFit = () => { if (!frame) frame = requestAnimationFrame(fitPanel); };
+  addEventListener("scroll", queueFit, { passive: true });
+  addEventListener("resize", queueFit);
+
+  /* A click that starts and ends on the backdrop closes the dialog; a text selection dragged past the edge does not */
+  function closeOnBackdrop(dialog) {
+    let pressed = false;
+    dialog.addEventListener("pointerdown", (event) => { pressed = event.target === dialog; });
+    dialog.addEventListener("click", (event) => { if (pressed && event.target === dialog) dialog.close(); });
+  }
+
+  /* ---------- Compare ---------- */
+  let compare = [];
+  const tray = $("tray");
+  const trayNote = $("tray-note");
+  const compareDialog = $("compare");
+  const openCompare = $("open-compare");
+
+  function toggleCompare(id) {
+    if (compare.includes(id)) compare = compare.filter((other) => other !== id);
+    else if (compare.length >= MAX_COMPARE) {
+      trayNote.textContent = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
+      syncChecks();
+      return;
+    } else compare = [...compare, id];
+    renderCompare();
+  }
+
+  /* Every Compare checkbox (the cards' and Details') reads from the one list */
+  function syncChecks() {
+    for (const item of items) item.card.querySelector(".compare").checked = compare.includes(item.id);
+    const detailsCheck = $("d-compare");
+    if (detailsCheck) detailsCheck.checked = detailsItem != null && compare.includes(detailsItem.id);
+  }
+
+  function renderCompare() {
+    trayNote.textContent = "";
+    syncChecks();
+
+    tray.hidden = compare.length === 0;
+    $("tray-items").innerHTML = compare.map((id) => {
+      const { game } = byId.get(id);
+      return `<li class="tray-item">${thumb(game)}<span class="tray-name">${esc(game.name)}</span><button class="btn btn--icon btn--quiet" type="button" data-remove="${id}" aria-label="Remove ${esc(game.name)} from compare">${icon("i-close")}</button></li>`;
+    }).join("");
+    $("tray-count").innerHTML = `${compare.length} of ${MAX_COMPARE}<span class="visually-hidden"> games chosen</span>`;
+    openCompare.textContent = `Compare ${plural(compare.length, "game")}`;
+    openCompare.disabled = compare.length < 2;
+    if (compareDialog.open) renderCompareTable();
+  }
+
+  /* Removing a game moves focus to the remove button that takes its place, or the one before it */
+  function removeFromCompare(id, container) {
+    const removeButtons = () => [...$(container).querySelectorAll("[data-remove]")];
+    const index = removeButtons().findIndex((button) => button.dataset.remove === id);
+    compare = compare.filter((other) => other !== id);
+    renderCompare();
+    const remaining = removeButtons();
+    const next = remaining[Math.min(index, remaining.length - 1)];
+    if (next) next.focus();
+    else if (compareDialog.open) compareDialog.close();
+    else byId.get(id).card.querySelector(".compare").focus();
+  }
+  $("tray-items").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove]");
+    if (button) removeFromCompare(button.dataset.remove, "tray-items");
+  });
+  $("compare-table").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove]");
+    if (button) removeFromCompare(button.dataset.remove, "compare-table");
+  });
+
+  const COMPARE_ROWS = [
+    ["Rating", (item) => scoreBadge(item)],
+    ["Bottom line", (item) => esc(item.game.bottomLine)],
+    ["Difficulty", (item) => `<span${difficultyClass(item.game) || ' class="level"'}>${difficultyHtml(item.game)}</span>`],
+    ["Ages", (item) => `${item.game.ages}+`],
+    ["Players", (item) => playersHtml(item.game)],
+    ["Time", (item) => esc(item.game.time)],
+    ["Price", (item) => priceText(item.game)],
+    ["Themes", (item) => esc(item.game.themes.join(", "))],
+    ["Reviewers liked", (item) => listHtml(item.game.liked)],
+    ["Watch out for", (item) => listHtml(item.game.watchOut)],
+    ["Where to buy", (item) => storesHtml(item.game, true)],
+  ];
+
+  function renderCompareTable() {
+    const chosen = compare.map((id) => byId.get(id));
+    $("c-title").textContent = `Comparing ${plural(chosen.length, "game")}`;
+    $("compare-table").style.setProperty("--games", chosen.length);
+    $("compare-table").innerHTML = `
+      <colgroup><col class="label-col">${chosen.map(() => `<col class="game-col">`).join("")}</colgroup>
+      <thead><tr>
+        <th scope="col"><span class="visually-hidden">Detail</span></th>
+        ${chosen.map(({ game, id }) => `<th scope="col"><div class="compare-head">${thumb(game)}<span class="compare-name">${esc(game.name)}</span><button class="btn btn--icon btn--quiet" type="button" data-remove="${id}" aria-label="Remove ${esc(game.name)} from compare">${icon("i-close")}</button></div></th>`).join("")}
+      </tr></thead>
+      <tbody>${COMPARE_ROWS.map(([label, cell]) => `<tr><th scope="row">${label}</th>${chosen.map((item) => `<td>${cell(item)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  }
+
+  openCompare.addEventListener("click", () => {
+    renderCompareTable();
+    compareDialog.showModal();
+  });
+  compareDialog.addEventListener("close", () => {
+    if (document.activeElement === document.body) (tray.hidden ? $("games") : openCompare).focus();
+  });
+  closeOnBackdrop(compareDialog);
+
+  /* ---------- Details ---------- */
+  const details = $("details");
+  const dMain = $("d-main");
+  let detailsItem = null;
+  let pushedEntry = false;
+
+  function ratingsHtml(game) {
+    const boxes = [];
+    /* BoardGameGeek first: it is the score on the card */
+    if (game.bggText) {
+      boxes.push(["BoardGameGeek", game.bggText, "out of 10", game.bggCount ? `from ${game.bggCount.toLocaleString("en-US")} rating${game.bggCount === 1 ? "" : "s"}` : ""]);
+    }
+    if (game.shopperRating) {
+      boxes.push(["Shopper rating", game.shopperRating, "out of 5", game.shopperCount ? `from ${game.shopperCount} shoppers` : ""]);
+    }
+    if (game.criticText) boxes.push(["Critic score", game.criticText, "out of 10", ""]);
+    if (!boxes.length) return "";
+    return `
+      <section class="section" aria-labelledby="d-ratings">
+        <h3 class="section-title" id="d-ratings">Ratings</h3>
+        <dl class="scores">${boxes.map(([label, value, scale, count]) => `
+          <div class="score"><dt>${label}</dt><dd><span class="score-value">${esc(value)}</span> <span class="score-scale">${scale}</span>${count ? `<span class="score-count">${esc(count)}</span>` : ""}</dd></div>`).join("")}
+        </dl>
+      </section>`;
+  }
+
+  function renderDetails(item) {
+    const { game } = item;
+    $("d-title").textContent = game.name;
+    dMain.innerHTML = `
+      <div class="details-head">
+        <div class="details-meta">
+          <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
+          <label class="option compare-check"><input class="compare" type="checkbox" id="d-compare"><span class="option-label">Compare</span></label>
+        </div>
+        <p class="bottom-line">${esc(game.bottomLine)}</p>
+        <dl class="facts">
+          <div class="fact"><dt>Difficulty</dt><dd${difficultyClass(game)}>${difficultyHtml(game)}</dd></div>
+          <div class="fact"><dt>Ages</dt><dd>${game.ages}+</dd></div>
+          <div class="fact"><dt>Players</dt><dd>${playersHtml(game)}</dd></div>
+          <div class="fact"><dt>Time</dt><dd>${timeHtml(game.time)}</dd></div>
+          <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
+        </dl>
+      </div>
+      <section class="section" aria-labelledby="d-story">
+        <h3 class="section-title" id="d-story">Description</h3>
+        <p class="story">${esc(game.story)}</p>
+        <ul class="tags" aria-label="Tags">${[...game.themes, ...(game.replayable ? ["Replayable"] : [])].map((tag) => `<li class="tag">${esc(tag)}</li>`).join("")}</ul>
+      </section>
+      <div class="proscons">
+        <section class="section pro" aria-labelledby="d-pros">
+          <h3 class="section-title" id="d-pros">Reviewers liked</h3>
+          <ul>${game.liked.map((text) => `<li>${icon("i-check")}${esc(text)}</li>`).join("")}</ul>
+        </section>
+        <section class="section con" aria-labelledby="d-cons">
+          <h3 class="section-title" id="d-cons">Watch out for</h3>
+          <ul>${game.watchOut.map((text) => `<li>${icon("i-triangle")}${esc(text)}</li>`).join("")}</ul>
+        </section>
+      </div>
+      ${ratingsHtml(game)}
+      <section class="section" aria-labelledby="d-buy">
+        <h3 class="section-title" id="d-buy">Where to buy</h3>
+        ${storesHtml(game, false)}
+      </section>`;
+    $("d-pane").scrollTop = 0;
+    syncChecks();
+  }
+
+  /* The dialog opens on the game in the current list; a game the filters hide clears them first */
+  function openDetails(item, push) {
+    if (!current.includes(item)) {
+      resetFilters();
+      update();
+    }
+    detailsItem = item;
+    renderDetails(item);
+    if (!details.open) {
+      details.showModal();
+      if (push) {
+        history.pushState(null, "", `#${item.id}`);
+        pushedEntry = true;
+      }
+    }
+  }
+
+  /* The Compare checkbox is rendered with each game, so its change is caught on the dialog body */
+  dMain.addEventListener("change", (event) => {
+    if (event.target.id === "d-compare") toggleCompare(detailsItem.id);
+  });
+
+  details.addEventListener("close", () => {
+    const item = detailsItem;
+    detailsItem = null;
+    if (byId.has(decodeURIComponent(location.hash.slice(1)))) {
+      if (pushedEntry) history.back();
+      else history.replaceState(null, "", location.pathname + location.search);
+    }
+    pushedEntry = false;
+    item?.card.querySelector(".card-link").focus();
+  });
+  closeOnBackdrop(details);
+  closeOnBackdrop(sheet);
+
+  function openFromHash() {
+    const item = byId.get(decodeURIComponent(location.hash.slice(1)));
+    if (item) openDetails(item, false);
+    else if (details.open) details.close();
+  }
+  addEventListener("hashchange", openFromHash);
+
+  /* ---------- Theme switch: Light and Dark set data-theme and save the choice; System clears both ---------- */
+  const THEME_KEY = "ai-playground-theme";
+  const themeSwitch = document.querySelector(".theme-switch");
+  const currentTheme = document.documentElement.dataset.theme ?? "system";
+  for (const input of themeSwitch.querySelectorAll('input[name="theme"]')) {
+    input.checked = input.value === currentTheme;
+    input.addEventListener("change", () => {
+      const root = document.documentElement;
+      if (input.value === "system") delete root.dataset.theme;
+      else root.dataset.theme = input.value;
+      try {
+        if (input.value === "system") localStorage.removeItem(THEME_KEY);
+        else localStorage.setItem(THEME_KEY, input.value);
+      } catch { }
+    });
+  }
+  themeSwitch.hidden = false;
+
+  placeControls();
+  update();
+  renderCompare();
+  fitPanel();
+  openFromHash();
+})();
+</script>
+</body>
+</html>

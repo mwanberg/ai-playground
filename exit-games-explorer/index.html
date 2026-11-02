@@ -7,7 +7,7 @@
 <meta name="description" content="Narrow the 46 EXIT games by difficulty, rating, theme and age, read each game's details, and compare up to four side by side.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
 <script>
   /* Applies a theme saved by the footer's switch before the first paint, so the
      page never flashes the other theme. The key is shared with the gallery. */
@@ -22,42 +22,50 @@
 /* ---------- Tokens: every font, color, size and space comes from here ---------- */
 @layer tokens {
   :root {
-    --font-body: "Instrument Sans", system-ui, sans-serif;
-    --font-heading: "Big Shoulders Display", "Arial Narrow", sans-serif;
-    --heading-weight: 800;
-    --heading-tracking: 0.01em;
-
+    --font: "Hanken Grotesk", system-ui, sans-serif;
+    --weight-display: 200;
+    --weight-light: 300;
     --weight-regular: 400;
     --weight-semibold: 600;
+    --weight-bold: 700;
 
-    --leading-tight: 1.05;
-    --leading-snug: 1.25;
-    --leading-body: 1.5;
-
-    --step--1: 0.875rem;
-    --step-0: 1rem;
-    --step-1: 1.125rem;
-    --step-2: clamp(1.375rem, 1.2rem + 0.6vw, 1.625rem);
-    --step-3: clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
-    --step-4: clamp(2.5rem, 1.8rem + 3vw, 4rem);
+    /* Type roles: size / line height. The type layer assigns them. */
+    --text-label: 0.75rem / 1rem;
+    --text-meta: 0.875rem / 1.25rem;
+    --text-value: 1rem / 1.25rem;
+    --text-body: 1rem / 1.5rem;
+    --text-deck: 1.25rem / 1.75rem;
+    --text-name: 1.5rem / 1.875rem;
+    --text-title: 2rem / 2.25rem;
+    --text-display: clamp(3.5rem, 1.5rem + 8vw, 8rem) / 0.9;
+    --track-label: 0.08em;
+    --track-name: -0.01em;
+    --track-title: -0.02em;
+    --track-display: -0.045em;
 
     --space-1: 0.25rem;
     --space-2: 0.5rem;
-    --space-3: 1rem;
-    --space-4: 1.5rem;
-    --space-5: 2.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
 
     /* Spacing roles: every margin, padding and gap names one of these */
     --gap-hair: var(--space-1);      /* icon to its text, dot to dot */
     --gap-tight: var(--space-2);     /* related controls side by side; a label to its value */
-    --gap-stack: var(--space-3);     /* items stacked inside one component */
-    --gap-section: var(--space-4);   /* sections inside a dialog or panel; cards in the grid */
-    --gap-region: var(--space-5);    /* the page's big areas */
-    --inset: var(--space-4);         /* padding of containers: page edge, dialogs, sheet, panel */
-    --inset-card: var(--space-3);    /* padding of cards, score boxes, table cells, bars */
+    --gap-row: var(--space-3);       /* fact rows; a title to its meta line */
+    --gap-stack: var(--space-4);     /* items stacked inside one component */
+    --gap-group: var(--space-5);     /* groups inside a card or dialog */
+    --gap-section: var(--space-6);   /* sections inside a dialog or panel; cards in the grid */
+    --gap-region: var(--space-8);    /* the page's big areas */
+    --inset: var(--space-6);         /* padding of containers: page edge, dialogs, sheet, panel */
+    --inset-card: var(--space-5);    /* padding of cards, table cells, bars */
 
     --radius-s: 0.375rem;
-    --radius-m: 0.75rem;
+    --radius-m: 0.875rem;
     --radius-pill: 999px;
     --page-max: 80rem;
     --panel-width: 22rem;
@@ -72,29 +80,27 @@
     --switch-option: var(--target-min);
     --switch-icon: 1.125rem;
 
-    /* Each color is a light and dark pair; the page's color scheme picks one */
-    --color-bg: light-dark(#F4F2EE, #131418);
-    --color-surface: light-dark(#FFFFFF, #1C1E23);
-    --color-stage: light-dark(#E8E4DC, #2A2D34);
-    --color-ink: light-dark(#1D1C21, #EEECE7);
-    --color-ink-muted: light-dark(#4B4851, #C0BDC6);
-    --color-line: light-dark(#D9D4CA, #34373F);
-    /* Borders of controls: the 3:1 non-text floor, firmer than the card lines */
-    --color-control-line: light-dark(#7D776C, #72757E);
-    --color-accent: light-dark(#0B565C, #82DADF);
-    --color-accent-soft: light-dark(#DCEEEF, #143337);
-    --color-accent-strong: light-dark(#073B40, #A6E6EA);
-    --color-on-accent: light-dark(#FFFFFF, #0B1F21);
-    --color-great: light-dark(#0B565C, #82DADF);
-    --color-great-soft: light-dark(#DCEEEF, #143337);
-    --color-mixed: light-dark(#813017, #F2A285);
-    --color-flag: light-dark(#1D1C21, #EEECE7);
-    --color-on-flag: light-dark(#FFFFFF, #131418);
-    --color-pip-off: light-dark(#CFC9BD, #454952);
-    --color-sticky: light-dark(#EEEAE3, #272A31);
-    --color-shadow: light-dark(rgb(40 30 10 / 0.24), rgb(0 0 0 / 0.7));
-    --color-backdrop: rgb(10 10 14 / 0.6);
-    --shadow-tray: 0 -0.5rem 1.5rem light-dark(rgb(40 30 10 / 0.12), rgb(0 0 0 / 0.4));
+    /* Each color is a light and dark pair; the page's color scheme picks one.
+       Neutrals are one cool slate family. Every surface is the ground or a block on it; nothing between. */
+    --color-bg: light-dark(#E9ECF2, #0F1420);
+    --color-surface: light-dark(#FFFFFF, #1B2334);
+    --color-ink: light-dark(#151A26, #EEF1F7);
+    --color-ink-muted: light-dark(#434B5C, #B6BDCC);
+    /* Disabled controls: a grey well below the text floor on purpose, so "off" reads as off; about 3:1 on a block */
+    --color-disabled: light-dark(#8B919D, #6B7484);
+    --color-line: light-dark(#D5DAE4, #2C3649);
+    /* Borders of controls: the 3:1 non-text floor */
+    --color-control-line: light-dark(#737B8C, #7A8399);
+    /* Clickable: the slate's own hue, saturated. Every control wears it; nothing else does. */
+    --color-accent: light-dark(#1C49AD, #9CBEFF);
+    --color-accent-strong: light-dark(#153A8C, #BFD4FF);
+    --color-on-accent: light-dark(#FFFFFF, #0F1420);
+    /* Attention: one bright amber for facts worth noticing (difficulty, rating, tags), as marks and tints, never as text */
+    --color-meaning: light-dark(#D97706, #F5B041);
+    --color-meaning-soft: light-dark(#FDEBD0, #3F2A0C);
+    --color-backdrop: light-dark(rgb(21 26 38 / 0.55), rgb(5 8 14 / 0.75));
+    --color-shadow: light-dark(rgb(21 26 38 / 0.16), rgb(0 0 0 / 0.6));
+    --shadow-tray: 0 -0.5rem 1.5rem light-dark(rgb(21 26 38 / 0.1), rgb(0 0 0 / 0.4));
     --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.35);
     --shadow-strip: 0.625rem;
     --shadow-ramp: 1.5rem;
@@ -108,7 +114,7 @@
 
   /* Narrow screens: containers sit closer to the edge */
   @media (max-width: 40rem) {
-    :root { --inset: var(--space-3); --gap-region: var(--space-4); }
+    :root { --inset: var(--space-4); --gap-region: var(--space-6); }
   }
 }
 
@@ -139,10 +145,16 @@
 /* ---------- Layout ---------- */
 @layer layout {
   .page { max-width: var(--page-max); margin-inline: auto; padding-inline: var(--inset); }
-  .masthead { padding-block: var(--gap-region) var(--gap-section); }
-  .lede { margin: var(--gap-tight) 0 0; color: var(--color-ink-muted); max-width: 52ch; }
+
+  /* The masthead: a light title with the publisher's quote beside it as a deck on wide screens */
+  .masthead { padding-block: var(--space-12) var(--space-10); }
+  .lede { margin: var(--gap-section) 0 0; max-width: 36ch; }
   .lede blockquote { margin: 0; }
-  .lede-source { margin-block-start: var(--gap-hair); }
+  .lede-source { margin-block-start: var(--gap-row); }
+  @media (width > 64rem) {
+    .masthead { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); column-gap: var(--space-12); align-items: end; padding-block: 3.5rem var(--space-12); }
+    .lede { margin: 0; padding-inline-start: var(--gap-section); border-inline-start: 1px solid var(--color-control-line); max-width: none; }
+  }
 
   .grid {
     --columns: 2;
@@ -172,12 +184,16 @@
   /* The tray covers the bottom of the window, so the page keeps room beneath its end */
   body:has(.tray:not([hidden])) { padding-block-end: var(--tray-clearance); }
 
-  .site-footer { border-block-start: 1px solid var(--color-line); margin-block-start: var(--gap-region); }
+  /* The footer is a colophon on the ground: space separates it, not a rule */
+  .site-footer { margin-block-start: var(--gap-region); }
   .footer-inner {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: var(--gap-stack) var(--gap-section); padding-block: var(--gap-section);
+    display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between;
+    gap: var(--gap-stack) var(--gap-section); padding-block: var(--gap-region) var(--space-10);
   }
-  .footer-text { display: grid; gap: var(--gap-tight); max-width: 60ch; color: var(--color-ink-muted); }
+  .footer-text { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-tight) var(--gap-region); max-width: 60rem; color: var(--color-ink-muted); }
+  @media (max-width: 44rem) {
+    .footer-text { grid-template-columns: minmax(0, 1fr); }
+  }
 }
 
 /* ---------- Components: layout, color and spacing only; type comes from the type layer ---------- */
@@ -196,7 +212,7 @@
     .skip-link { transition: transform 150ms ease; }
   }
 
-  /* Fields */
+  /* Fields you type into stay neutral: typing is not clicking */
   .field {
     min-height: var(--target-min); padding-inline: var(--inset-card);
     border: 1px solid var(--color-control-line); border-radius: var(--radius-m);
@@ -204,10 +220,11 @@
   }
   .search { inline-size: 100%; }
 
-  /* Sort: the select keeps its native menu; the arrow is drawn, so it sits one card inset from the edge */
-  .select-wrap { position: relative; display: grid; }
+  /* Sort: the select keeps its native menu and dresses as a button; the arrow is drawn */
+  .select-wrap { position: relative; display: grid; color: var(--color-accent); }
   select.field {
     appearance: none; cursor: pointer;
+    border-color: transparent; color: var(--color-accent);
     padding-inline-end: calc(var(--inset-card) + 1rem + var(--gap-tight));
   }
   .select-arrow {
@@ -218,17 +235,18 @@
   .sort { display: flex; align-items: center; gap: var(--gap-tight); }
   .sort .select-wrap { flex: 1; min-inline-size: 0; }
 
-  /* Filters panel: search, quick picks and the filter groups, with Clear all filters
-     pinned at the bottom. The page script sets --panel-max to the room between the
-     panel's top and the bottom of the window, so the footer stays in view before the
-     panel sticks; without it the panel fills the window once stuck. */
+  /* Filters panel: one white block holding search, quick picks and the filter groups, with Clear
+     all filters at the bottom. The page script sets --panel-max to the room between the panel's
+     top and the bottom of the window, so the footer stays in view before the panel sticks;
+     without it the panel fills the window once stuck. */
   .filters-panel {
     position: sticky; inset-block-start: var(--gap-stack);
     max-block-size: var(--panel-max, calc(100dvh - 2 * var(--gap-stack)));
     display: flex; flex-direction: column; overflow: hidden;
     border-radius: var(--radius-m);
-    background: var(--color-surface); border: 1px solid var(--color-line);
+    background: var(--color-surface);
   }
+  .filters-panel .bar--head { padding-block: var(--gap-group) var(--gap-hair); }
   .filters-panel .bar--foot { justify-content: center; }
   .filters-body { padding: var(--inset); display: grid; gap: var(--gap-section); align-content: start; }
   .panel-section { display: grid; gap: var(--gap-tight); }
@@ -243,13 +261,9 @@
   }
   .sort .field { inline-size: 100%; }
 
-  /* Filter groups */
-  .filter-group {
-    border: 0; margin: 0; padding: var(--gap-stack) 0 0; min-inline-size: 0;
-    border-block-start: 1px solid var(--color-line);
-  }
-  .filter-group + .filter-group { margin-block-start: var(--gap-stack); }
-  .filter-group:first-child { border-block-start: 0; padding-block-start: 0; }
+  /* Filter groups: space separates them, not rules */
+  .filter-group { border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+  .filter-group + .filter-group { margin-block-start: var(--gap-section); }
   .filter-group legend { float: left; inline-size: 100%; padding: 0; margin-block-end: var(--gap-tight); }
   .filter-group legend + * { clear: both; }
   .option {
@@ -258,16 +272,41 @@
     padding-inline: var(--gap-tight); margin-inline: calc(-1 * var(--gap-tight));
     border-radius: var(--radius-s); cursor: pointer;
   }
-  .option:hover { background: var(--color-accent-soft); }
-  .option input { inline-size: 1.125rem; block-size: 1.125rem; margin: 0; accent-color: var(--color-accent); cursor: inherit; }
+  .option:hover { background: var(--color-bg); }
+  /* Checkboxes and radios draw their own box in the clickable color, filled when checked */
+  .option input {
+    appearance: none; inline-size: 1.125rem; block-size: 1.125rem; margin: 0; cursor: inherit;
+    border: 2px solid var(--color-accent); border-radius: 0.3rem; background: var(--color-surface);
+    display: grid; place-content: center;
+  }
+  .option input[type="radio"] { border-radius: 50%; }
+  .option input::before {
+    content: ""; inline-size: 0.7rem; block-size: 0.7rem; scale: 0; background: var(--color-on-accent);
+    clip-path: polygon(12% 46%, 0 62%, 40% 100%, 100% 22%, 86% 8%, 40% 70%);
+  }
+  .option input[type="radio"]::before { clip-path: none; border-radius: 50%; inline-size: 0.5rem; block-size: 0.5rem; }
+  .option input:checked { background: var(--color-accent); }
+  .option input:checked::before { scale: 1; }
   .option input:focus-visible { outline: none; }
   .option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: 1px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .option input::before { transition: scale 120ms ease; }
+  }
+  @media (forced-colors: active) {
+    .option input { border-color: ButtonText; }
+    .option input:checked { background: Highlight; border-color: Highlight; }
+    .option input:checked::before { background: HighlightText; }
+  }
   .option-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-tight); }
   .option-count, .pick-count { color: var(--color-ink-muted); font-variant-numeric: tabular-nums; }
   .btn[aria-pressed="true"] .pick-count { color: inherit; }
-  .option.is-empty { color: var(--color-ink-muted); cursor: default; }
-  .option.is-empty:hover { background: none; }
-  .option.is-empty .rating, .option.is-empty .pips { opacity: 0.55; }
+  /* Disabled, everywhere: muted text, no fill, the box an empty ring in the control-line colour,
+     dots in the muted colour, and no hover. The same rule dresses disabled buttons below. */
+  .option:has(input:disabled), .option.is-empty { color: var(--color-disabled); cursor: default; }
+  .option:has(input:disabled):hover, .option.is-empty:hover { background: none; }
+  .option input:disabled { border-color: var(--color-disabled); background: transparent; }
+  .option:has(input:disabled) .option-label, .option:has(input:disabled) .option-count,
+  .option.is-empty .option-label, .option.is-empty .option-count { color: var(--color-disabled); }
 
   /* Results bar: the count, and Sort and the Columns switch beside it on wide screens */
   .results-bar {
@@ -280,10 +319,20 @@
     .results-tools { display: none; }
   }
 
-  /* Columns switch: native radios in the filter option style, side by side */
-  .columns { display: flex; align-items: center; border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+  /* Columns switch: two native radios drawn as one segmented control */
+  .columns { display: flex; align-items: center; border: 0; margin: 0; padding: 0; min-inline-size: 0; gap: 0; }
   .columns legend { float: left; padding: 0; margin-inline-end: var(--gap-tight); }
-  .columns .option { margin-inline: 0; }
+  .columns .option {
+    grid-template-columns: 1fr; justify-items: center; position: relative;
+    min-inline-size: var(--target-min); min-block-size: var(--target-compact); margin: 0; padding-inline: var(--gap-tight);
+    background: var(--color-surface); color: var(--color-accent); border-radius: 0;
+  }
+  .columns .option:first-of-type { border-start-start-radius: var(--radius-pill); border-end-start-radius: var(--radius-pill); }
+  .columns .option:last-of-type { border-start-end-radius: var(--radius-pill); border-end-end-radius: var(--radius-pill); }
+  .columns .option:hover, .columns .option:has(:checked) { background: var(--color-accent); color: var(--color-on-accent); }
+  /* The radio covers its segment unseen, so the whole segment is the click target */
+  .columns .option input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; border: 0; border-radius: inherit; opacity: 0; }
+  .columns .option:has(input:focus-visible) { outline-offset: 2px; z-index: 1; }
   /* Three cards are too narrow below 75rem */
   @media (max-width: 75rem) {
     .columns { display: none; }
@@ -293,35 +342,32 @@
     grid-column: 1 / -1;
     display: grid; justify-items: start; gap: var(--gap-stack);
     padding: var(--inset);
-    background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-m);
+    background: var(--color-surface); border-radius: var(--radius-m);
   }
 
-  /* Card */
+  /* Card: one white block; the box on its own stage at the top, then the name, the meta line,
+     the verdict, four facts two by two, and a foot row with Difficulty and Compare */
   .card {
     container: card / inline-size;
     background: var(--color-surface);
-    border: 1px solid var(--color-line);
     border-radius: var(--radius-m);
     overflow: clip;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .card { transition: border-color 150ms, box-shadow 150ms; }
+    .card { transition: box-shadow 150ms; }
   }
-  .card:has(.compare:checked) {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent);
-  }
+  .card:has(.compare:checked) { box-shadow: 0 0 0 2px var(--color-accent); }
   .card-inner { display: grid; grid-template-rows: auto 1fr; min-height: 100%; }
   .card-stage {
     position: relative;
-    background: var(--color-stage);
+    background: var(--color-surface);
     inline-size: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 3 / 2;
     align-self: start;
   }
   .card-stage img {
-    position: absolute; inset: var(--inset-card) var(--inset-card) var(--gap-tight);
-    width: calc(100% - 2 * var(--inset-card)); height: calc(100% - var(--inset-card) - var(--gap-tight));
+    position: absolute; inset: var(--gap-tight);
+    width: calc(100% - 2 * var(--gap-tight)); height: calc(100% - 2 * var(--gap-tight));
     object-fit: contain;
   }
   .stage-name {
@@ -330,88 +376,96 @@
   }
   .card-flag {
     position: absolute; inset-block-start: var(--gap-tight); inset-inline-start: var(--gap-tight);
-    background: var(--color-flag); color: var(--color-on-flag);
+    background: var(--color-meaning-soft); color: var(--color-ink);
     padding: var(--gap-hair) var(--gap-tight); border-radius: var(--radius-s);
   }
-  .card-body { display: flex; flex-direction: column; gap: var(--gap-stack); padding: var(--inset-card); }
-  .card-head { display: grid; gap: var(--gap-tight); }
-  .card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-stack); }
+  .card-body {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    column-gap: var(--gap-stack); row-gap: 0;
+    padding: var(--gap-section) var(--inset-card) var(--inset-card);
+  }
+  .card-head, .verdict { grid-column: 1 / -1; }
+  .card-head { display: grid; gap: var(--gap-row); margin-block-end: var(--gap-group); }
+  .verdict { color: var(--color-ink-muted); margin-block-end: var(--gap-group); }
+  /* The meta line: the rating at the left, the type and year together at the right; on a narrow
+     card the pair drops to its own line, still right-aligned */
+  .card-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
+  .card-kind { display: inline-flex; gap: var(--gap-row); margin-inline-start: auto; white-space: nowrap; }
   .card-year { color: var(--color-ink-muted); }
-  .card-link { color: inherit; text-decoration: none; }
-  .card-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.15em; }
+  /* The name is the link, so it shows it */
+  .card-link { color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.16em; }
+  .card-link:hover { color: var(--color-accent-strong); text-decoration-thickness: 3px; }
 
-  /* Rating badge: the BoardGameGeek score, or Few ratings when there are too few to show one */
+  /* Rating badge: the BoardGameGeek score on the attention tint with an amber star; grey when ratings are few */
   .rating, .rating > [aria-hidden] {
     display: inline-flex; white-space: nowrap; align-items: center; gap: var(--gap-hair);
   }
   .rating {
     padding-inline: var(--gap-tight); border-radius: var(--radius-pill);
-    background: var(--color-great-soft); color: var(--color-great);
+    background: var(--color-meaning-soft); color: var(--color-ink);
   }
-  .rating svg { width: 0.9em; height: 0.9em; fill: currentColor; }
+  .rating svg { width: 0.9em; height: 0.9em; fill: var(--color-meaning); }
   .rating-source { margin-inline-start: var(--gap-hair); }
-  .rating--none { background: var(--color-stage); color: var(--color-ink-muted); }
+  .rating--none { background: var(--color-bg); color: var(--color-ink-muted); }
+  .rating--none svg { fill: currentColor; }
 
-  /* Facts */
-  .facts {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--gap-stack);
-    padding-block-start: var(--gap-stack); border-block-start: 1px solid var(--color-line);
-  }
+  /* Facts: label over value. On a card the list lays its items straight into the body grid. */
+  .card .facts { display: contents; }
   .fact { min-width: 0; }
-  .fact dt { color: var(--color-ink-muted); }
+  .fact dt { color: var(--color-ink-muted); margin-block-end: 0.125rem; }
   .fact dd { font-variant-numeric: tabular-nums; }
-  .fact--wide { grid-column: 1 / -1; }
   .fact dd small { color: var(--color-ink-muted); }
+  .card .fact { order: 1; margin-block-end: var(--gap-row); }
+  /* The foot row: Difficulty and Compare share a 24px baseline row, the target minimum */
+  .card .fact--wide { order: 2; grid-column: 1; grid-row: 5; align-self: end; margin: var(--gap-tight) 0 0; }
+  .card .fact--wide dd { display: flex; align-items: center; min-block-size: var(--space-6); }
+  .card .compare-check { order: 3; grid-column: 2; grid-row: 5; align-self: end; justify-self: end; min-block-size: var(--space-6); margin: var(--gap-tight) calc(-1 * var(--gap-tight)) 0 0; padding-block: 0; }
+  .compare-check .option-label { color: var(--color-accent); }
+  /* Compare at the limit: the unchecked boxes are disabled (the shared disabled rule above dresses them) and their label carries the note */
 
-  /* Difficulty: five dots, like the LEVEL scale printed on each box */
+  /* Difficulty: five dots, like the LEVEL scale printed on each box; off dots are rings, so fill and colour both tell.
+     --pip-on is the fill, amber unless a disabled option turns it muted. */
   .level { display: flex; align-items: center; gap: var(--gap-tight); white-space: nowrap; }
-  .pips { display: inline-flex; gap: var(--gap-hair); }
-  .pips i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--color-pip-off); }
-  .pips i.on { background: var(--color-accent); }
-  .pips i.half { background: linear-gradient(90deg, var(--color-accent) 50%, var(--color-pip-off) 50%); }
-
-  /* Compare checkbox: the filter option row, in the card's bottom-right corner */
-  .card-body .compare-check { align-self: flex-end; margin-block-start: auto; }
-
-  /* Wider cards: photo beside the details */
-  @container card (min-width: 34rem) {
-    .card-inner { grid-template-columns: 9rem 1fr; grid-template-rows: none; }
-    .card-stage { aspect-ratio: auto; align-self: stretch; }
-    .facts { grid-template-columns: repeat(4, auto); justify-content: space-between; }
-    /* A value with a small note wraps at the note; a bare value, such as a price, stays whole */
-    .fact dd:not(:has(small)) { white-space: nowrap; }
+  .pips { display: inline-flex; gap: var(--gap-hair); --pip-on: var(--color-meaning); }
+  .pips i { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1.5px solid var(--color-control-line); background: transparent; }
+  .pips i.on { background: var(--pip-on); border-color: var(--pip-on); }
+  /* A half dot: the left half solid out to its edge, the right half an empty ring. Three
+     layers under a transparent border: the fill over the left half, the surface inside, the ring colour behind the right half. */
+  .pips i.half {
+    border-color: transparent;
+    background:
+      linear-gradient(90deg, var(--pip-on) 50%, transparent 50%) border-box,
+      linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+      linear-gradient(90deg, transparent 50%, var(--color-control-line) 50%) border-box;
   }
+  .option:has(input:disabled) .pips, .option.is-empty .pips { --pip-on: var(--color-disabled); }
+  .option:has(input:disabled) .pips i, .option.is-empty .pips i { border-color: var(--color-disabled); }
 
-  /* Thumbnails in the tray and the compare headers; a game without a photo gets the bare tint */
+  /* Thumbnails in the tray and the compare headers; a game without a photo gets the ground tint */
   .thumb { inline-size: var(--thumb, 2rem); block-size: var(--thumb, 2rem); object-fit: contain; flex: none; }
-  .thumb--empty { background: var(--color-stage); border-radius: var(--radius-s); }
+  .thumb--empty { background: var(--color-bg); border-radius: var(--radius-s); }
 
   /* Compare tray */
   .tray {
     position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 6;
-    background: var(--color-surface); border-block-start: 1px solid var(--color-line);
+    background: var(--color-surface);
     box-shadow: var(--shadow-tray);
   }
-  /* One line, never wrapping, until the note needs its own line */
-  .tray-inner { display: flex; flex-wrap: nowrap; gap: var(--gap-tight); align-items: center; padding-block: var(--inset-card); }
-  .tray-inner:has(.tray-note:not(:empty)) { flex-wrap: wrap; }
+  .tray-inner { display: flex; flex-wrap: nowrap; gap: var(--gap-tight); align-items: center; padding-block: var(--gap-stack); }
   .tray-items { display: flex; gap: var(--gap-tight); flex: 1; min-inline-size: 0; flex-wrap: nowrap; padding: 0; list-style: none; }
   .tray-item {
     display: flex; align-items: center; gap: var(--gap-tight);
     flex: 0 1 auto; min-inline-size: 0;
     padding-inline-start: var(--gap-tight);
-    border: 1px solid var(--color-line); border-radius: var(--radius-m); background: var(--color-bg);
+    border-radius: var(--radius-m); background: var(--color-bg);
   }
   .tray-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tray-count { color: var(--color-ink-muted); white-space: nowrap; }
-  .tray-note { flex-basis: 100%; }
-  .tray-note:empty { display: none; }
 
   @media (max-width: 40rem) {
     .tray-count { display: none; }
-    /* Below about 380px four thumbnails and the button take two rows, and the page keeps room for both */
     .tray-inner { flex-wrap: wrap; }
+    /* Below about 380px four thumbnails and the button take two rows, and the page keeps room for both */
     @media (max-width: 24rem) {
       body { --tray-clearance: 9rem; }
     }
@@ -436,18 +490,17 @@
   .details::backdrop, .sheet::backdrop { background: var(--color-backdrop); }
 
   /* Bars and panes: every panel that scrolls between a header and a footer (Details, the
-     Filters panel, the sheet) shares the compare table's treatment. The bars sit on the
-     sticky tint with a firm edge; where scroll-driven animations are supported, a shadow
-     fades in under the header once content scrolls beneath it, and a shadow above the
-     footer shows while more content waits below. */
+     Filters panel, the sheet) shares the compare table's treatment. The bars sit on the block's
+     own surface; where scroll-driven animations are supported, a shadow fades in under the
+     header once content scrolls beneath it, and a shadow above the footer shows while more
+     content waits below. */
   .bar {
     position: relative; z-index: 1;
     display: flex; justify-content: space-between; align-items: center; gap: var(--gap-tight);
-    padding: var(--gap-tight) var(--gap-tight) var(--gap-tight) var(--inset);
-    background: var(--color-sticky);
+    padding: var(--gap-group) var(--gap-tight) var(--gap-row) var(--inset);
+    background: var(--color-surface);
   }
-  .bar--head { border-block-end: 1px solid var(--color-control-line); }
-  .bar--foot { border-block-start: 1px solid var(--color-control-line); padding-inline-start: var(--gap-tight); }
+  .bar--foot { padding: var(--gap-row) var(--gap-tight) var(--gap-stack); }
   .pane { overflow-y: auto; flex: 1; min-block-size: 0; overscroll-behavior: contain; scroll-timeline: --pane y; }
   .has-pane { timeline-scope: --pane; }
   .bar--head::after, .bar--foot::before {
@@ -464,44 +517,66 @@
       animation: shadow-out linear both; animation-timeline: --pane; animation-range: calc(100% - var(--shadow-ramp)) 100%;
     }
   }
-  .details-main { padding: var(--inset); display: grid; gap: var(--gap-section); }
-  .details-head { display: grid; gap: var(--gap-tight); }
-  /* The card's chip, type and year line, with Compare at its end */
+
+  /* Details: the meta line, a deck, the facts in a row between hairlines, then the story with
+     the ratings and stores beneath it on the left and the two review lists on the right */
+  .details-main {
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--space-10); row-gap: var(--gap-section);
+    padding: var(--gap-tight) var(--inset) var(--inset);
+  }
+  .details-head { grid-column: 1 / -1; display: grid; gap: var(--gap-stack); }
   .details-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
+  .details-meta .card-meta { justify-content: flex-start; gap: var(--gap-tight) var(--gap-row); }
   .details .dialog-title { min-inline-size: 0; }
-  .details .facts { display: flex; flex-wrap: wrap; gap: var(--gap-stack) var(--gap-section); }
+  /* The deck is as wide as the description column beneath it, so the two align */
+  .bottom-line { max-inline-size: calc((100% - var(--space-10)) * 7 / 12); }
+  @media (max-width: 44rem) { .bottom-line { max-inline-size: none; } }
+  .details .facts {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--gap-row) var(--gap-stack);
+    padding-block: var(--gap-stack) var(--gap-group); border-block: 1px solid var(--color-line);
+  }
+  .details .facts .fact { flex: 0 1 auto; }
   .section { display: grid; gap: var(--gap-tight); align-content: start; }
-  .story { max-width: 60ch; }
-  .tags { display: flex; flex-wrap: wrap; gap: var(--gap-tight); padding: 0; list-style: none; }
-  .tag { padding-inline: var(--gap-tight); border-radius: var(--radius-pill); background: var(--color-bg); border: 1px solid var(--color-line); }
-  .proscons { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--gap-section); }
+  .section--story { grid-column: 1; grid-row: 2; }
+  .section--ratings { grid-column: 1; grid-row: 3; padding-block-start: var(--gap-group); border-block-start: 1px solid var(--color-line); }
+  .section--buy { grid-column: 1; grid-row: 4; }
+  .proscons { grid-column: 2; grid-row: 2 / 5; display: grid; gap: var(--gap-section); align-content: start; }
+  .story { max-width: 62ch; }
+  /* Themes: a labelled line of plain text */
+  .tags { display: flex; flex-wrap: wrap; gap: 0 var(--gap-tight); padding: 1.125rem 0 0; margin-block-start: var(--gap-stack); list-style: none; position: relative; }
+  .tags::before { content: "Themes"; position: absolute; inset-block-start: 0; color: var(--color-ink-muted); }
+  .tag + .tag::before { content: "\00b7"; margin-inline-end: var(--gap-tight); color: var(--color-ink-muted); font-weight: var(--weight-regular); }
   .proscons ul { padding: 0; list-style: none; display: grid; gap: var(--gap-tight); align-content: start; }
   .proscons li { display: grid; grid-template-columns: 1rem 1fr; gap: var(--gap-tight); }
-  .proscons svg { width: 1rem; height: 1rem; margin-block-start: 0.2em; }
-  .pro svg { fill: var(--color-great); }
-  .con svg { fill: var(--color-mixed); }
+  .proscons svg { width: 1rem; height: 1rem; margin-block-start: 0.3rem; fill: var(--color-ink); }
 
-  .scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--gap-tight); }
-  .score { padding: var(--inset-card); border-radius: var(--radius-m); background: var(--color-bg); }
-  .score dt { color: var(--color-ink-muted); }
-  .score dd { font-variant-numeric: tabular-nums; }
+  /* Ratings: one line per source, the labels in a fixed column so the values line up */
+  .scores { display: grid; gap: var(--gap-tight); }
+  .score { display: flex; align-items: baseline; gap: 0 var(--gap-tight); }
+  .score dt { flex: 0 0 9.5rem; min-inline-size: 0; color: var(--color-ink-muted); }
+  .score dd { flex: 1; min-inline-size: 0; font-variant-numeric: tabular-nums; }
   .score-scale, .score-count { color: var(--color-ink-muted); }
-  .score-count { display: block; }
+  .score-count { margin-inline-start: var(--gap-tight); }
+  .score-count::before { content: "\00b7\00a0"; }
 
   .stores { display: flex; flex-wrap: wrap; gap: var(--gap-tight) var(--gap-section); padding: 0; list-style: none; }
   .store {
     color: var(--color-accent);
     text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
   }
-  .store:hover { text-decoration-thickness: 2px; }
+  .store:hover { color: var(--color-accent-strong); text-decoration-thickness: 2px; }
   .store svg { width: 0.8em; height: 0.8em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: -0.05em; }
 
   @media (max-width: 44rem) {
     .details { inline-size: 100%; max-inline-size: 100%; max-block-size: 100dvh; block-size: 100dvh; border-radius: 0; }
+    .details-main { grid-template-columns: minmax(0, 1fr); }
+    .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
+    .section--story, .section--ratings, .section--buy, .proscons { grid-column: 1; grid-row: auto; }
   }
 
   /* Compare dialog: the same shell as Details, wider, with a table that scrolls both ways.
-     The header row and the label column stay put on the sticky tint with a firm edge.
+     The header row and the label column stay put on the surface with a firm edge.
      Where scroll-driven animations are supported, shadows add depth cues: one under the
      header once the rows scroll beneath it, one beside the labels once the games scroll
      beneath them, and one at each far edge while more content waits there. */
@@ -526,13 +601,13 @@
   /* Sticky header row and label column */
   .compare-table thead th {
     position: sticky; inset-block-start: 0; z-index: 2;
-    background: var(--color-sticky);
+    background: var(--color-surface);
     border-block-end: 1px solid var(--color-control-line);
   }
   /* Layers: game headers 2, label column 3 (so game headers and their shadow slide under it), corner 4 */
   .compare-table tbody th, .compare-table thead th:first-child {
     position: sticky; inset-inline-start: 0; z-index: 3;
-    background: var(--color-sticky);
+    background: var(--color-surface);
     border-inline-end: 1px solid var(--color-control-line);
   }
   .compare-table thead th:first-child { z-index: 4; }
@@ -624,18 +699,19 @@
     @starting-style { .sheet[open]::backdrop { opacity: 0; } }
   }
 
-  /* Buttons: one base and its variants. Hover tints, focus draws a ring that eases outward, pressed toggles fill. */
+  /* Buttons: white blocks with clickable-color text that fill on hover; the main action is filled.
+     Inside a white block a hairline marks the edge. Focus draws a ring that eases outward. */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: var(--gap-tight);
     min-height: var(--target-min); padding-inline: var(--gap-stack);
-    border: 1px solid var(--color-control-line); border-radius: var(--radius-m);
-    background: var(--color-surface); color: var(--color-ink);
+    border: 1px solid transparent; border-radius: var(--radius-m);
+    background: var(--color-surface); color: var(--color-accent);
     cursor: pointer;
     outline: var(--focus-width) solid transparent; outline-offset: 0;
   }
-  .btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+  .filters-panel .btn, .details .btn, .sheet .btn { border-color: var(--color-control-line); }
+  .btn:hover, .btn:active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
   .btn:focus-visible { outline-color: var(--color-accent); outline-offset: var(--focus-offset); }
-  .btn:active { background: var(--color-accent-soft); border-color: var(--color-accent-strong); }
   .btn[aria-pressed="true"],
   .btn--primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
   .btn[aria-pressed="true"]:hover,
@@ -645,12 +721,13 @@
   .btn--icon svg { width: 1rem; height: 1rem; fill: currentColor; }
   .btn--quiet { border-color: transparent; background: transparent; }
   .btn--compact { min-height: var(--target-compact); padding-inline: var(--inset-card); }
-  /* aria-disabled keeps the button focusable; its click handler does nothing */
+  /* Disabled buttons follow the one disabled rule: muted text, no fill, the shape kept by a hairline.
+     aria-disabled keeps the button focusable; its click handler does nothing. */
   .btn:disabled, .btn:disabled:hover, .btn[aria-disabled="true"], .btn[aria-disabled="true"]:hover {
-    background: var(--color-stage); border-color: transparent; color: var(--color-ink-muted); cursor: default;
+    background: transparent; border-color: var(--color-disabled); color: var(--color-disabled); cursor: default;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .btn { transition: background-color 120ms ease, border-color 120ms ease, outline-offset 120ms ease; }
+    .btn { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, outline-offset 120ms ease; }
   }
   @media (forced-colors: active) {
     .btn[aria-pressed="true"], .btn--primary:not(:disabled) {
@@ -670,7 +747,7 @@
   .theme-switch-track {
     position: relative; display: grid; grid-template-columns: repeat(3, var(--switch-option));
     padding: var(--gap-hair);
-    border: 1px solid var(--color-control-line); border-radius: var(--radius-pill);
+    border-radius: var(--radius-pill);
     background: var(--color-surface);
   }
   /* The thumb under the checked option; its border keeps the selection visible in forced colors */
@@ -678,8 +755,8 @@
     content: ""; position: absolute;
     inset-block: var(--gap-hair); inset-inline-start: var(--gap-hair);
     inline-size: calc((100% - 2 * var(--gap-hair)) / 3);
-    border: 1px solid var(--color-control-line); border-radius: var(--radius-pill);
-    background: var(--color-accent-soft);
+    border: 1px solid var(--color-accent); border-radius: var(--radius-pill);
+    background: var(--color-accent);
     translate: calc(var(--switch-index) * 100%) 0;
   }
   .theme-switch-track:has(input[value="light"]:checked) { --switch-index: 0; }
@@ -687,67 +764,56 @@
   .theme-switch-track:has(input[value="system"]:checked) { --switch-index: 2; }
   @media (prefers-reduced-motion: no-preference) {
     .theme-switch-track::before { transition: translate 300ms ease; }
-    .theme-option { transition: background-color 120ms ease; }
+    .theme-option { transition: color 120ms ease; }
   }
   .theme-option {
     position: relative; display: grid; place-items: center;
     block-size: var(--switch-option); border-radius: var(--radius-pill); cursor: pointer;
+    color: var(--color-accent);
   }
-  .theme-option:hover:not(:has(input:checked)) { background: var(--color-accent-soft); }
+  .theme-option:has(input:checked) { color: var(--color-on-accent); }
   /* The radio is hidden, so the option shows its focus ring, drawn inside the track */
   .theme-option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: calc(var(--focus-width) * -1); }
   .theme-option svg { inline-size: var(--switch-icon); block-size: var(--switch-icon); }
 }
 
-/* ---------- Type: eight text roles; nothing outside this layer sets size, weight, leading or family ---------- */
+/* ---------- Type: eight roles in one family; nothing outside this layer sets size, weight, leading or family ---------- */
 @layer type {
-  body {
-    font-family: var(--font-body);
-    font-size: var(--step-0);
-    font-weight: var(--weight-regular);
-    line-height: var(--leading-body);
-  }
+  body { font: var(--weight-regular) var(--text-body) var(--font); }
 
-  /* Display: the page title */
-  .masthead h1 {
-    font: var(--heading-weight) var(--step-4) / var(--leading-tight) var(--font-heading);
-    letter-spacing: var(--heading-tracking);
-  }
+  /* Display: the page title, light, with the series name bold */
+  .masthead h1 { font: var(--weight-display) var(--text-display) var(--font); letter-spacing: var(--track-display); }
+  .masthead h1 strong { font-weight: var(--weight-bold); letter-spacing: -0.03em; }
 
-  /* Title: card names, dialog and panel headings, rating numbers, a missing photo's name */
-  .card-title, .dialog-title, .score-value, .stage-name {
-    font: var(--heading-weight) var(--step-2) / var(--leading-tight) var(--font-heading);
-    letter-spacing: var(--heading-tracking);
-    text-wrap: balance;
-  }
+  /* Title: the Filters panel and the dialogs */
+  .dialog-title { font: var(--weight-light) var(--text-title) var(--font); letter-spacing: var(--track-title); }
 
-  /* Lead: the intro and the dialog's bottom line */
-  .lede, .bottom-line { font-size: var(--step-1); }
+  /* Deck: the publisher's quote and the bottom line in Details */
+  .lede, .bottom-line { font: var(--weight-light) var(--text-deck) var(--font); }
 
-  /* Strong: fact values, every button, the results count, the tray's count, and the skip link */
-  .fact dd, .btn, .compare-name, .results-count, .tray-count, .skip-link {
-    font-size: var(--step-0);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-snug);
-  }
+  /* Name: game names on cards and in the compare headers, and a missing photo's name */
+  .card-title, .compare-name, .stage-name { font: var(--weight-semibold) var(--text-name) var(--font); letter-spacing: var(--track-name); text-wrap: balance; }
 
-  /* Small: supporting text */
-  .verdict, .card-year, .fact dd small, .score-scale, .score-count,
-  .tray-note, .tag, .option-count, .pick-count, .compare-check, .footer-text, .lede-source {
-    font-size: var(--step--1);
-    font-weight: var(--weight-regular);
-  }
-
-  /* Small strong: labels, section titles, and badges */
-  .card-type, .fact dt, .section-title, .score dt,
-  .rating, .card-flag, .tray-item, .compare-table th,
-  .filter-group legend, .columns legend, .sort-label, .btn--compact {
-    font-size: var(--step--1);
-    font-weight: var(--weight-semibold);
-  }
-
-  /* A checked filter option reads in the strong weight */
+  /* Body: running text, lists, filter options, the compare table's cells */
+  .story, .proscons li, .option-label, .compare-table td, .no-match p { font: var(--weight-regular) var(--text-body) var(--font); }
   .filter-group .option:has(:checked) .option-label { font-weight: var(--weight-semibold); }
+
+  /* Value: fact values, buttons, counts, names in the tray, the skip link, Compare, the theme labels, store links */
+  .fact dd, .btn, .results-count, .tray-count, .skip-link, .compare-check .option-label, .tag, .score-value, .store, .columns .option-label, .select-wrap {
+    font: var(--weight-semibold) var(--text-value) var(--font);
+  }
+
+  /* Meta, strong: the rating badge, the game type, the tags on the art, the tray's names, the compare table's headers */
+  .rating, .card-type, .card-flag, .tray-item, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
+  /* Meta, regular: the year, verdicts, counts, notes, the footer */
+  .card-year, .verdict, .fact dd small, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .tray-note, .lede-source { font: var(--weight-regular) var(--text-meta) var(--font); }
+  .lede-source { font-weight: var(--weight-semibold); }
+
+  /* Label: small caps labels everywhere */
+  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .tags::before {
+    font: var(--weight-semibold) var(--text-label) var(--font);
+    text-transform: uppercase; letter-spacing: var(--track-label);
+  }
 }
 </style>
 <script src="games.js"></script>
@@ -776,7 +842,7 @@
 <a class="skip-link" href="#games">Skip to the games</a>
 
 <header class="page masthead">
-  <h1>EXIT Games Explorer</h1>
+  <h1><strong>EXIT</strong> Games Explorer</h1>
   <figure class="lede">
     <blockquote><p>EXIT: The Game is a series of escape room games for the home. Players must solve riddles and puzzles and crack codes to escape from an imaginary room.</p></blockquote>
     <figcaption class="lede-source">Publisher description</figcaption>
@@ -849,7 +915,7 @@
     <ul class="tray-items" id="tray-items"></ul>
     <p class="tray-count" id="tray-count"></p>
     <button class="btn btn--primary" type="button" id="open-compare"></button>
-    <p class="tray-note" id="tray-note" role="status"></p>
+    <p class="tray-note visually-hidden" id="tray-note" role="status"></p>
   </div>
 </aside>
 
@@ -1065,7 +1131,7 @@
         <div class="card-body">
           <div class="card-head">
             <h3 class="card-title"><a class="card-link" id="card-${item.id}" href="#${item.id}">${esc(game.name)}</a></h3>
-            <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
+            <p class="card-meta">${scoreBadge(item)}<span class="card-kind"><span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></span></p>
           </div>
           <p class="verdict">${esc(game.bottomLine)}</p>
           <dl class="facts">
@@ -1283,7 +1349,8 @@
     frame = 0;
     const gap = parseFloat(getComputedStyle(panel).insetBlockStart);
     const top = Math.max(panel.getBoundingClientRect().top, gap);
-    panel.style.setProperty("--panel-max", `${window.innerHeight - top - gap}px`);
+    const trayHeight = tray.hidden ? 0 : tray.getBoundingClientRect().height;
+    panel.style.setProperty("--panel-max", `${window.innerHeight - top - gap - trayHeight}px`);
   }
   const queueFit = () => { if (!frame) frame = requestAnimationFrame(fitPanel); };
   addEventListener("scroll", queueFit, { passive: true });
@@ -1305,26 +1372,33 @@
 
   function toggleCompare(id) {
     if (compare.includes(id)) compare = compare.filter((other) => other !== id);
-    else if (compare.length >= MAX_COMPARE) {
-      trayNote.textContent = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
-      syncChecks();
-      return;
-    } else compare = [...compare, id];
+    else if (compare.length >= MAX_COMPARE) return;
+    else compare = [...compare, id];
     renderCompare();
   }
 
-  /* Every Compare checkbox (the cards' and Details') reads from the one list */
+  /* Every Compare checkbox (the cards' and Details') reads from the one list. At the limit the
+     unchecked boxes are disabled and their label carries the note as a tooltip. */
+  const LIMIT_NOTE = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
   function syncChecks() {
-    for (const item of items) item.card.querySelector(".compare").checked = compare.includes(item.id);
+    const full = compare.length >= MAX_COMPARE;
+    const sync = (input, id) => {
+      input.checked = compare.includes(id);
+      input.disabled = full && !input.checked;
+      input.closest(".compare-check").title = input.disabled ? LIMIT_NOTE : "";
+    };
+    for (const item of items) sync(item.card.querySelector(".compare"), item.id);
     const detailsCheck = $("d-compare");
-    if (detailsCheck) detailsCheck.checked = detailsItem != null && compare.includes(detailsItem.id);
+    if (detailsCheck) sync(detailsCheck, detailsItem?.id);
   }
 
   function renderCompare() {
-    trayNote.textContent = "";
+    trayNote.textContent = compare.length >= MAX_COMPARE ? LIMIT_NOTE : "";
     syncChecks();
 
     tray.hidden = compare.length === 0;
+    queueFit();
+    queueFit();
     $("tray-items").innerHTML = compare.map((id) => {
       const { game } = byId.get(id);
       return `<li class="tray-item">${thumb(game)}<span class="tray-name">${esc(game.name)}</span><button class="btn btn--icon btn--quiet" type="button" data-remove="${id}" aria-label="Remove ${esc(game.name)} from compare">${icon("i-close")}</button></li>`;
@@ -1410,7 +1484,7 @@
     if (game.criticText) boxes.push(["Critic score", game.criticText, "out of 10", ""]);
     if (!boxes.length) return "";
     return `
-      <section class="section" aria-labelledby="d-ratings">
+      <section class="section section--ratings" aria-labelledby="d-ratings">
         <h3 class="section-title" id="d-ratings">Ratings</h3>
         <dl class="scores">${boxes.map(([label, value, scale, count]) => `
           <div class="score"><dt>${label}</dt><dd><span class="score-value">${esc(value)}</span> <span class="score-scale">${scale}</span>${count ? `<span class="score-count">${esc(count)}</span>` : ""}</dd></div>`).join("")}
@@ -1436,7 +1510,7 @@
           <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
         </dl>
       </div>
-      <section class="section" aria-labelledby="d-story">
+      <section class="section section--story" aria-labelledby="d-story">
         <h3 class="section-title" id="d-story">Description</h3>
         <p class="story">${esc(game.story)}</p>
         <ul class="tags" aria-label="Tags">${[...game.themes, ...(game.replayable ? ["Replayable"] : [])].map((tag) => `<li class="tag">${esc(tag)}</li>`).join("")}</ul>
@@ -1452,7 +1526,7 @@
         </section>
       </div>
       ${ratingsHtml(game)}
-      <section class="section" aria-labelledby="d-buy">
+      <section class="section section--buy" aria-labelledby="d-buy">
         <h3 class="section-title" id="d-buy">Where to buy</h3>
         ${storesHtml(game, false)}
       </section>`;

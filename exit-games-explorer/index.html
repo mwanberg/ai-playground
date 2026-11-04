@@ -68,8 +68,12 @@
     --radius-m: 0.875rem;
     --radius-pill: 999px;
     --page-max: 80rem;
-    --panel-width: 22rem;
+    /* The layout grid: 24 columns, so two and three cards both land on its lines */
+    --grid-tracks: repeat(24, minmax(0, 1fr));
+    --gutter: var(--space-6);
     --dialog-max: 46rem;
+    /* The box photo's column in Details: four steps of the 2.5rem space */
+    --photo-column: calc(4 * var(--space-10));
     --card-min: 19rem;
     --target-min: 2.75rem;
     --target-compact: 2rem;
@@ -101,7 +105,8 @@
     --color-backdrop: light-dark(rgb(21 26 38 / 0.55), rgb(5 8 14 / 0.75));
     --color-shadow: light-dark(rgb(21 26 38 / 0.16), rgb(0 0 0 / 0.6));
     --shadow-tray: 0 -0.5rem 1.5rem light-dark(rgb(21 26 38 / 0.1), rgb(0 0 0 / 0.4));
-    --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.35);
+    /* Dark mode deepens the shadow and adds a hairline edge, since a shadow barely shows on a dark ground */
+    --shadow-dialog: 0 1.5rem 3rem light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.7)), 0 0 0 1px light-dark(transparent, var(--color-line));
     --shadow-strip: 0.625rem;
     --shadow-ramp: 1.5rem;
 
@@ -112,9 +117,22 @@
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; }
 
+  /* Light text on a dark ground reads heavier, so dark mode sets each weight a step lighter.
+     The display weight stays at 200, the lightest the loaded font offers. */
+  :root[data-theme="dark"] { --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670; }
+  }
+
   /* Narrow screens: containers sit closer to the edge */
   @media (max-width: 40rem) {
     :root { --inset: var(--space-4); --gap-region: var(--space-6); }
+  }
+
+  /* Below 64rem the title runs the full measure: "EXIT Games" sets at 5.0 times the font size,
+     so the size is the measure over 5.05, capped at the desktop's 8rem */
+  @media (max-width: 64rem) {
+    :root { --text-display: min(8rem, (100vw - 2 * var(--inset)) / 5.05) / 0.9; }
   }
 }
 
@@ -146,21 +164,35 @@
 @layer layout {
   .page { max-width: var(--page-max); margin-inline: auto; padding-inline: var(--inset); }
 
-  /* The masthead: a light title with the publisher's quote beside it as a deck on wide screens */
+  /* The masthead: a light title with the publisher's quote as a deck, full width on phones,
+     two thirds of the grid under the title from 40rem, and beside the title on wide screens */
   .masthead { padding-block: var(--space-12) var(--space-10); }
-  .lede { margin: var(--gap-section) 0 0; max-width: 36ch; }
+  .lede { margin: var(--gap-section) 0 0; }
   .lede blockquote { margin: 0; }
   .lede-source { margin-block-start: var(--gap-row); }
+  /* The dash marks the quotation; screen readers skip it where the browser supports alternative text for generated content */
+  .lede-source::before { content: "\2014\00a0"; content: "\2014\00a0" / ""; }
+  @media (width > 40rem) {
+    .masthead { display: grid; grid-template-columns: var(--grid-tracks); column-gap: var(--gutter); }
+    .masthead h1 { grid-column: 1 / -1; }
+    .lede { grid-column: 1 / span 16; }
+  }
   @media (width > 64rem) {
-    .masthead { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); column-gap: var(--space-12); align-items: end; padding-block: 3.5rem var(--space-12); }
-    .lede { margin: 0; padding-inline-start: var(--gap-section); border-inline-start: 1px solid var(--color-control-line); max-width: none; }
+    .masthead { align-items: end; padding-block: 3.5rem var(--space-12); }
+    .masthead h1 { grid-column: 1 / span 14; }
+    .lede { grid-column: 15 / -1; margin: 0; padding-inline-start: var(--gap-section); border-inline-start: 1px solid var(--color-control-line); }
+  }
+  /* Beside two cards, the deck starts on the second card's line */
+  @media (width > 75rem) {
+    .masthead h1 { grid-column: 1 / span 15; }
+    .lede { grid-column: 16 / -1; }
   }
 
   .grid {
     --columns: 2;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
-    gap: var(--gap-section);
+    gap: var(--gutter);
     padding-block-end: var(--gap-region);
   }
   .grid[data-columns="3"] { --columns: 3; }
@@ -172,13 +204,18 @@
     .grid { grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); }
   }
 
-  /* The Filters panel beside the results on wide screens; above them on narrow ones */
-  .catalog {
-    display: grid; grid-template-columns: var(--panel-width) minmax(0, 1fr);
-    gap: var(--gap-region); align-items: start;
+  /* The Filters panel above the results on narrow screens; beside them on wide ones, over 8
+     columns while only two cards are offered and 6 once three are, so the cards' area splits
+     evenly into two or three on grid lines */
+  .catalog { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); align-items: start; }
+  @media (width > 64rem) {
+    .catalog { grid-template-columns: var(--grid-tracks); column-gap: var(--gutter); }
+    .filters-panel { grid-column: 1 / span 8; }
+    .catalog > main { grid-column: 9 / -1; }
   }
-  @media (max-width: 64rem) {
-    .catalog { grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); }
+  @media (width > 75rem) {
+    .filters-panel { grid-column: 1 / span 6; }
+    .catalog > main { grid-column: 7 / -1; }
   }
 
   /* The tray covers the bottom of the window, so the page keeps room beneath its end */
@@ -246,9 +283,11 @@
     border-radius: var(--radius-m);
     background: var(--color-surface);
   }
-  .filters-panel .bar--head { padding-block: var(--gap-group) var(--gap-hair); }
+  /* The title sits centered in its bar, so the shadow under the bar falls as far below it as the bar's top is above */
+  .filters-panel .bar--head { padding-block: var(--gap-group); }
   .filters-panel .bar--foot { justify-content: center; }
   .filters-body { padding: var(--inset); display: grid; gap: var(--gap-section); align-content: start; }
+  .filters-panel .filters-body { padding-block-start: var(--gap-tight); }
   .panel-section { display: grid; gap: var(--gap-tight); }
   .pick-list { display: flex; flex-wrap: wrap; gap: var(--gap-tight); padding: 0; list-style: none; }
 
@@ -300,13 +339,18 @@
   .option-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-tight); }
   .option-count, .pick-count { color: var(--color-ink-muted); font-variant-numeric: tabular-nums; }
   .btn[aria-pressed="true"] .pick-count { color: inherit; }
-  /* Disabled, everywhere: muted text, no fill, the box an empty ring in the control-line colour,
-     dots in the muted colour, and no hover. The same rule dresses disabled buttons below. */
-  .option:has(input:disabled), .option.is-empty { color: var(--color-disabled); cursor: default; }
-  .option:has(input:disabled):hover, .option.is-empty:hover { background: none; }
-  .option input:disabled { border-color: var(--color-disabled); background: transparent; }
-  .option:has(input:disabled) .option-label, .option:has(input:disabled) .option-count,
+  /* Disabled, everywhere: muted text, no fill, the box an empty ring in the disabled grey,
+     dots in the muted colour, and no hover. A Compare box at the limit is aria-disabled and takes the same look. */
+  .option:has(input:is(:disabled, [aria-disabled="true"])), .option.is-empty { color: var(--color-disabled); cursor: default; }
+  .option:has(input:is(:disabled, [aria-disabled="true"])):hover, .option.is-empty:hover { background: none; }
+  .option input:is(:disabled, [aria-disabled="true"]) { border-color: var(--color-disabled); background: transparent; }
+  .option:has(input:is(:disabled, [aria-disabled="true"])) .option-label, .option:has(input:disabled) .option-count,
   .option.is-empty .option-label, .option.is-empty .option-count { color: var(--color-disabled); }
+  /* Forced colors: GrayText, the system's disabled color, as on the Clear button */
+  @media (forced-colors: active) {
+    .option input[aria-disabled="true"] { border-color: GrayText; }
+    .option:has(input[aria-disabled="true"]) .option-label { color: GrayText; }
+  }
 
   /* Results bar: the count, and Sort and the Columns switch beside it on wide screens */
   .results-bar {
@@ -352,6 +396,7 @@
     background: var(--color-surface);
     border-radius: var(--radius-m);
     overflow: clip;
+    cursor: pointer;
   }
   @media (prefers-reduced-motion: no-preference) {
     .card { transition: box-shadow 150ms; }
@@ -370,6 +415,8 @@
     width: calc(100% - 2 * var(--gap-tight)); height: calc(100% - 2 * var(--gap-tight));
     object-fit: contain;
   }
+  /* A game with no photo: its name on the ground colour, so the stage reads as a placeholder, not a failed load */
+  .card-stage:has(.stage-name) { background: var(--color-bg); }
   .stage-name {
     position: absolute; inset: 0; display: grid; place-items: center;
     padding: var(--inset-card); text-align: center;
@@ -386,24 +433,32 @@
   }
   .card-head, .verdict { grid-column: 1 / -1; }
   .card-head { display: grid; gap: var(--gap-row); margin-block-end: var(--gap-group); }
-  .verdict { color: var(--color-ink-muted); margin-block-end: var(--gap-group); }
+  .verdict { margin-block-end: var(--gap-group); text-wrap: pretty; }
   /* The meta line: the rating at the left, the type and year together at the right; on a narrow
      card the pair drops to its own line, still right-aligned */
   .card-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
   .card-kind { display: inline-flex; gap: var(--gap-row); margin-inline-start: auto; white-space: nowrap; }
+  /* Three cards across: the pair always takes its own line, left-aligned, so no card differs */
+  @media (width > 75rem) {
+    .grid[data-columns="3"] .card-kind { flex-basis: 100%; margin-inline-start: 0; }
+  }
   .card-year { color: var(--color-ink-muted); }
-  /* The name is the link, so it shows it */
-  .card-link { color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.16em; }
-  .card-link:hover { color: var(--color-accent-strong); text-decoration-thickness: 3px; }
+  /* The name is the link, so it shows it. The whole card except its Compare row opens Details,
+     so hovering anywhere but that row gives the name its hover look. */
+  .card-link { color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 0.16em; }
+  .card:hover:not(:has(.compare-check:hover)) .card-link { color: var(--color-accent-strong); text-decoration-thickness: 2.5px; }
 
-  /* Rating badge: the BoardGameGeek score on the attention tint with an amber star; grey when ratings are few */
+  /* Rating badge: the BoardGameGeek score on the attention tint with an amber star; grey when ratings are few.
+     Three weights of attention: the score, then the scale muted, then the source as a label. */
   .rating, .rating > [aria-hidden] {
     display: inline-flex; white-space: nowrap; align-items: center; gap: var(--gap-hair);
   }
   .rating {
     padding-inline: var(--gap-tight); border-radius: var(--radius-pill);
     background: var(--color-meaning-soft); color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
   }
+  .rating-scale { color: var(--color-ink-muted); }
   .rating svg { width: 0.9em; height: 0.9em; fill: var(--color-meaning); }
   .rating-source { margin-inline-start: var(--gap-hair); }
   .rating--none { background: var(--color-bg); color: var(--color-ink-muted); }
@@ -421,7 +476,6 @@
   .card .fact--wide dd { display: flex; align-items: center; min-block-size: var(--space-6); }
   .card .compare-check { order: 3; grid-column: 2; grid-row: 5; align-self: end; justify-self: end; min-block-size: var(--space-6); margin: var(--gap-tight) calc(-1 * var(--gap-tight)) 0 0; padding-block: 0; }
   .compare-check .option-label { color: var(--color-accent); }
-  /* Compare at the limit: the unchecked boxes are disabled (the shared disabled rule above dresses them) and their label carries the note */
 
   /* Difficulty: five dots, like the LEVEL scale printed on each box; off dots are rings, so fill and colour both tell.
      --pip-on is the fill, amber unless a disabled option turns it muted. */
@@ -460,7 +514,7 @@
     border-radius: var(--radius-m); background: var(--color-bg);
   }
   .tray-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tray-count { color: var(--color-ink-muted); white-space: nowrap; }
+  .tray-count { color: var(--color-ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
   @media (max-width: 40rem) {
     .tray-count { display: none; }
@@ -525,12 +579,18 @@
     column-gap: var(--space-10); row-gap: var(--gap-section);
     padding: var(--gap-tight) var(--inset) var(--inset);
   }
-  .details-head { grid-column: 1 / -1; display: grid; gap: var(--gap-stack); }
+  .details-head { grid-column: 1 / -1; display: grid; }
+  /* With a photo, the opening is set in a column beside it; without one it spans the full width */
+  .details-head:has(.details-stage) { grid-template-columns: var(--photo-column) minmax(0, 1fr); column-gap: var(--space-10); row-gap: var(--gap-stack); }
+  .details-opening { display: grid; gap: var(--gap-stack); min-inline-size: 0; }
+  .details-stage { aspect-ratio: 1; align-self: start; }
+  .details-stage img { inline-size: 100%; block-size: 100%; object-fit: contain; }
   .details-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
   .details-meta .card-meta { justify-content: flex-start; gap: var(--gap-tight) var(--gap-row); }
   .details .dialog-title { min-inline-size: 0; }
-  /* The deck is as wide as the description column beneath it, so the two align */
+  /* The deck is as wide as the description column beneath it, so the two align; beside a photo it spans the opening's column */
   .bottom-line { max-inline-size: calc((100% - var(--space-10)) * 7 / 12); }
+  .details-head:has(.details-stage) .bottom-line { max-inline-size: none; }
   @media (max-width: 44rem) { .bottom-line { max-inline-size: none; } }
   .details .facts {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--gap-row) var(--gap-stack);
@@ -571,6 +631,9 @@
   @media (max-width: 44rem) {
     .details { inline-size: 100%; max-inline-size: 100%; max-block-size: 100dvh; block-size: 100dvh; border-radius: 0; }
     .details-main { grid-template-columns: minmax(0, 1fr); }
+    /* The photo is stacked above the opening, full width on a 3:2 stage like the card's */
+    .details-head:has(.details-stage) { grid-template-columns: minmax(0, 1fr); }
+    .details-stage { aspect-ratio: 3 / 2; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
     .section--story, .section--ratings, .section--buy, .proscons { grid-column: 1; grid-row: auto; }
   }
@@ -594,8 +657,10 @@
   .compare-table th, .compare-table td {
     padding: var(--inset-card);
     border-block-end: 1px solid var(--color-line);
-    text-align: start; vertical-align: top;
+    text-align: start; vertical-align: baseline;
+    font-variant-numeric: tabular-nums;
   }
+  .compare-table tbody th { color: var(--color-ink-muted); }
   .compare-table col.label-col { inline-size: var(--label-col); }
 
   /* Sticky header row and label column */
@@ -720,7 +785,7 @@
   .btn--icon { min-width: var(--target-min); padding-inline: var(--gap-tight); }
   .btn--icon svg { width: 1rem; height: 1rem; fill: currentColor; }
   .btn--quiet { border-color: transparent; background: transparent; }
-  .btn--compact { min-height: var(--target-compact); padding-inline: var(--inset-card); }
+  .btn--compact { min-height: var(--target-compact); padding-inline: var(--gap-tight); }
   /* Disabled buttons follow the one disabled rule: muted text, no fill, the shape kept by a hairline.
      aria-disabled keeps the button focusable; its click handler does nothing. */
   .btn:disabled, .btn:disabled:hover, .btn[aria-disabled="true"], .btn[aria-disabled="true"]:hover {
@@ -788,29 +853,49 @@
   /* Title: the Filters panel and the dialogs */
   .dialog-title { font: var(--weight-light) var(--text-title) var(--font); letter-spacing: var(--track-title); }
 
-  /* Deck: the publisher's quote and the bottom line in Details */
-  .lede, .bottom-line { font: var(--weight-light) var(--text-deck) var(--font); }
+  /* Running head: the results count, light at the name size */
+  .results-count { font: var(--weight-light) var(--text-name) var(--font); letter-spacing: var(--track-name); font-variant-numeric: tabular-nums; }
+
+  /* Deck: the publisher's quote, and the bottom line on cards and in Details */
+  .lede, .bottom-line, .verdict, .compare-verdict { font: var(--weight-light) var(--text-deck) var(--font); }
+  /* The publisher's words in italic, marking them as quoted; the only italic on the page.
+     The series name inside them in semibold. */
+  .lede blockquote { font-style: italic; }
+  .lede b { font-weight: var(--weight-semibold); }
 
   /* Name: game names on cards and in the compare headers, and a missing photo's name */
   .card-title, .compare-name, .stage-name { font: var(--weight-semibold) var(--text-name) var(--font); letter-spacing: var(--track-name); text-wrap: balance; }
+
+  /* Phones: the compare table's verdicts at the body size, and its names at the value size,
+     so a name breaks into two lines in a narrow column, not one word a line */
+  @media (max-width: 44rem) {
+    .compare-verdict { font: var(--weight-light) var(--text-body) var(--font); }
+    .compare-name { font: var(--weight-semibold) var(--text-value) var(--font); }
+  }
+
+  /* Three cards across: the name and the bottom line each a step down the scale */
+  @media (width > 75rem) {
+    .grid[data-columns="3"] .card-title { font: var(--weight-semibold) var(--text-deck) var(--font); }
+    .grid[data-columns="3"] .verdict { font: var(--weight-light) var(--text-body) var(--font); }
+  }
 
   /* Body: running text, lists, filter options, the compare table's cells */
   .story, .proscons li, .option-label, .compare-table td, .no-match p { font: var(--weight-regular) var(--text-body) var(--font); }
   .filter-group .option:has(:checked) .option-label { font-weight: var(--weight-semibold); }
 
   /* Value: fact values, buttons, counts, names in the tray, the skip link, Compare, the theme labels, store links */
-  .fact dd, .btn, .results-count, .tray-count, .skip-link, .compare-check .option-label, .tag, .score-value, .store, .columns .option-label, .select-wrap {
+  .fact dd, .btn, .tray-count, .skip-link, .compare-check .option-label, .tag, .score-value, .store, .columns .option-label, .select-wrap {
     font: var(--weight-semibold) var(--text-value) var(--font);
   }
 
   /* Meta, strong: the rating badge, the game type, the tags on the art, the tray's names, the compare table's headers */
   .rating, .card-type, .card-flag, .tray-item, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
-  /* Meta, regular: the year, verdicts, counts, notes, the footer */
-  .card-year, .verdict, .fact dd small, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .tray-note, .lede-source { font: var(--weight-regular) var(--text-meta) var(--font); }
+  /* Meta, regular: the year, the rating's scale, counts, notes, the footer */
+  .card-year, .rating-scale, .fact dd small, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .tray-note, .lede-source { font: var(--weight-regular) var(--text-meta) var(--font); }
   .lede-source { font-weight: var(--weight-semibold); }
 
   /* Label: small caps labels everywhere */
-  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .tags::before {
+  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .tags::before, .rating-scale + .rating-source, .compare-table tbody th {
     font: var(--weight-semibold) var(--text-label) var(--font);
     text-transform: uppercase; letter-spacing: var(--track-label);
   }
@@ -844,7 +929,7 @@
 <header class="page masthead">
   <h1><strong>EXIT</strong> Games Explorer</h1>
   <figure class="lede">
-    <blockquote><p>EXIT: The Game is a series of escape room games for the home. Players must solve riddles and puzzles and crack codes to escape from an imaginary room.</p></blockquote>
+    <blockquote><p><b>EXIT: The Game</b> is a series of escape room games for the home. Players must solve riddles and puzzles and crack codes to escape from an imaginary room.</p></blockquote>
     <figcaption class="lede-source">Publisher description</figcaption>
   </figure>
 </header>
@@ -981,7 +1066,7 @@
     const shown = score.toFixed(1);
     const count = few ? `<span class="rating-source">· ${plural(game.bggCount, "rating")}</span>` : "";
     const spoken = `BoardGameGeek rating ${shown} out of 10${few ? `, from only ${plural(game.bggCount, "rating")}` : ""}`;
-    return `<span class="rating${few ? " rating--none" : ""}"><span aria-hidden="true">${icon("i-star")}<span>${shown} / 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
+    return `<span class="rating${few ? " rating--none" : ""}"><span aria-hidden="true">${icon("i-star")}<span class="rating-score">${shown}</span><span class="rating-scale">/ 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
   }
 
   /* One view per game: the data plus what filtering and sorting need */
@@ -1028,11 +1113,11 @@
 
   const PICKS = [
     { name: "First game", sets: { type: ["Standard"], difficulty: ["2"] } },
-    { name: "Real challenge", sets: { difficulty: ["3.5", "4", "4.5"] } },
     { name: "Top rated", sets: { rating: ["top"] } },
     { name: "With kids", sets: { youngest: ["9"] } },
     { name: "Spooky", sets: { theme: ["Spooky"] } },
     { name: "Advent", sets: { type: ["Advent calendar"] } },
+    { name: "Real challenge", sets: { difficulty: ["3.5", "4", "4.5"] } },
   ];
 
   const emptySelection = () => ({ difficulty: [], rating: [], theme: [], type: [], youngest: [] });
@@ -1151,12 +1236,16 @@
 
   const grid = $("grid");
   const cardItem = (element) => byId.get(element.closest(".card").dataset.id);
+  /* A click anywhere on a card outside its Compare row opens Details, as the name link does.
+     A modified click is left to the browser, which opens the name link its own way; elsewhere
+     on the card it does nothing. A click that ends a text selection leaves the selection alone. */
   grid.addEventListener("click", (event) => {
-    const link = event.target.closest(".card-link");
-    /* Modified clicks keep the browser's own link behavior */
-    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (refuseAtLimit(event)) return;
+    const cardElement = event.target.closest(".card");
+    if (!cardElement || event.target.closest(".compare-check") || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!getSelection().isCollapsed) return;
     event.preventDefault();
-    openDetails(cardItem(link), true);
+    openDetails(cardItem(cardElement), true);
   });
   grid.addEventListener("change", (event) => {
     if (event.target.matches(".compare")) toggleCompare(cardItem(event.target).id);
@@ -1371,25 +1460,43 @@
   const openCompare = $("open-compare");
 
   function toggleCompare(id) {
-    if (compare.includes(id)) compare = compare.filter((other) => other !== id);
-    else if (compare.length >= MAX_COMPARE) return;
-    else compare = [...compare, id];
+    compare = compare.includes(id) ? compare.filter((other) => other !== id) : [...compare, id];
     renderCompare();
   }
 
   /* Every Compare checkbox (the cards' and Details') reads from the one list. At the limit the
-     unchecked boxes are disabled and their label carries the note as a tooltip. */
+     unchecked boxes are aria-disabled, so they stay focusable, and their label carries the note as a tooltip. */
   const LIMIT_NOTE = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
   function syncChecks() {
     const full = compare.length >= MAX_COMPARE;
     const sync = (input, id) => {
       input.checked = compare.includes(id);
-      input.disabled = full && !input.checked;
-      input.closest(".compare-check").title = input.disabled ? LIMIT_NOTE : "";
+      const limited = full && !input.checked;
+      if (limited) input.setAttribute("aria-disabled", "true");
+      else input.removeAttribute("aria-disabled");
+      input.closest(".compare-check").title = limited ? LIMIT_NOTE : "";
     };
     for (const item of items) sync(item.card.querySelector(".compare"), item.id);
     const detailsCheck = $("d-compare");
     if (detailsCheck) sync(detailsCheck, detailsItem?.id);
+  }
+
+  /* The status line is cleared, then set again in a later task, so screen readers announce a repeated note */
+  const NOTE_DELAY = 100;
+  let noteTimer = 0;
+  function announceLimit() {
+    clearTimeout(noteTimer);
+    trayNote.textContent = "";
+    noteTimer = setTimeout(() => {
+      if (compare.length >= MAX_COMPARE) trayNote.textContent = LIMIT_NOTE;
+    }, NOTE_DELAY);
+  }
+  /* Activating an aria-disabled Compare box changes nothing and announces the note. Returns true when it handled the event. */
+  function refuseAtLimit(event) {
+    if (!event.target.matches('.compare[aria-disabled="true"]')) return false;
+    event.preventDefault();
+    announceLimit();
+    return true;
   }
 
   function renderCompare() {
@@ -1397,7 +1504,6 @@
     syncChecks();
 
     tray.hidden = compare.length === 0;
-    queueFit();
     queueFit();
     $("tray-items").innerHTML = compare.map((id) => {
       const { game } = byId.get(id);
@@ -1432,7 +1538,7 @@
 
   const COMPARE_ROWS = [
     ["Rating", (item) => scoreBadge(item)],
-    ["Bottom line", (item) => esc(item.game.bottomLine)],
+    ["Bottom line", (item) => `<span class="compare-verdict">${esc(item.game.bottomLine)}</span>`],
     ["Difficulty", (item) => `<span${difficultyClass(item.game) || ' class="level"'}>${difficultyHtml(item.game)}</span>`],
     ["Ages", (item) => `${item.game.ages}+`],
     ["Players", (item) => playersHtml(item.game)],
@@ -1497,18 +1603,21 @@
     $("d-title").textContent = game.name;
     dMain.innerHTML = `
       <div class="details-head">
-        <div class="details-meta">
-          <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
-          <label class="option compare-check"><input class="compare" type="checkbox" id="d-compare"><span class="option-label">Compare</span></label>
+        ${game.image ? `<div class="details-stage"><img src="images/${esc(game.image)}" alt=""></div>` : ""}
+        <div class="details-opening">
+          <div class="details-meta">
+            <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
+            <label class="option compare-check"><input class="compare" type="checkbox" id="d-compare"><span class="option-label">Compare</span></label>
+          </div>
+          <p class="bottom-line">${esc(game.bottomLine)}</p>
+          <dl class="facts">
+            <div class="fact"><dt>Difficulty</dt><dd${difficultyClass(game)}>${difficultyHtml(game)}</dd></div>
+            <div class="fact"><dt>Ages</dt><dd>${game.ages}+</dd></div>
+            <div class="fact"><dt>Players</dt><dd>${playersHtml(game)}</dd></div>
+            <div class="fact"><dt>Time</dt><dd>${timeHtml(game.time)}</dd></div>
+            <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
+          </dl>
         </div>
-        <p class="bottom-line">${esc(game.bottomLine)}</p>
-        <dl class="facts">
-          <div class="fact"><dt>Difficulty</dt><dd${difficultyClass(game)}>${difficultyHtml(game)}</dd></div>
-          <div class="fact"><dt>Ages</dt><dd>${game.ages}+</dd></div>
-          <div class="fact"><dt>Players</dt><dd>${playersHtml(game)}</dd></div>
-          <div class="fact"><dt>Time</dt><dd>${timeHtml(game.time)}</dd></div>
-          <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
-        </dl>
       </div>
       <section class="section section--story" aria-labelledby="d-story">
         <h3 class="section-title" id="d-story">Description</h3>
@@ -1551,7 +1660,8 @@
     }
   }
 
-  /* The Compare checkbox is rendered with each game, so its change is caught on the dialog body */
+  /* The Compare checkbox is rendered with each game, so its click and change are caught on the dialog body */
+  dMain.addEventListener("click", refuseAtLimit);
   dMain.addEventListener("change", (event) => {
     if (event.target.id === "d-compare") toggleCompare(detailsItem.id);
   });

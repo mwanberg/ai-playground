@@ -84,6 +84,17 @@
     --switch-option: var(--target-min);
     --switch-icon: 1.125rem;
 
+    /* Motion: quick for color and state changes, base for things that move, slow for large surfaces.
+       Things arrive and change on the easing curve, which slows into place; things leave on the exit curve,
+       which gathers speed; crossfades run linear. */
+    --motion-quick: 120ms;
+    --motion-base: 200ms;
+    --motion-slow: 300ms;
+    --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+    --motion-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+    /* A tray item's size when it starts settling in */
+    --settle-scale: 0.85;
+
     /* Each color is a light and dark pair; the page's color scheme picks one.
        Neutrals are one cool slate family. Every surface is the ground or a block on it; nothing between. */
     --color-bg: light-dark(#E9ECF2, #0F1420);
@@ -246,7 +257,7 @@
   }
   .skip-link:not(:focus) { transform: translateY(calc(-100% - var(--gap-section))); }
   @media (prefers-reduced-motion: no-preference) {
-    .skip-link { transition: transform 150ms ease; }
+    .skip-link { transition: transform var(--motion-base) var(--motion-ease); }
   }
 
   /* Fields you type into stay neutral: typing is not clicking */
@@ -276,6 +287,8 @@
      all filters at the bottom. The page script sets --panel-max to the room between the panel's
      top and the bottom of the window, so the footer stays in view before the panel sticks;
      without it the panel fills the window once stuck. */
+  /* Scrolled to, the results' top lines up with the stuck Filters panel */
+  #games { scroll-margin-block-start: var(--gap-stack); }
   .filters-panel {
     position: sticky; inset-block-start: var(--gap-stack);
     max-block-size: var(--panel-max, calc(100dvh - 2 * var(--gap-stack)));
@@ -329,7 +342,7 @@
   .option input:focus-visible { outline: none; }
   .option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: 1px; }
   @media (prefers-reduced-motion: no-preference) {
-    .option input::before { transition: scale 120ms ease; }
+    .option input::before { transition: scale var(--motion-quick) var(--motion-ease); }
   }
   @media (forced-colors: active) {
     .option input { border-color: ButtonText; }
@@ -382,12 +395,8 @@
     .columns { display: none; }
   }
 
-  .no-match {
-    grid-column: 1 / -1;
-    display: grid; justify-items: start; gap: var(--gap-stack);
-    padding: var(--inset);
-    background: var(--color-surface); border-radius: var(--radius-m);
-  }
+  /* A line of copy on the ground at the cards' edge, with the button beneath */
+  .no-match { grid-column: 1 / -1; display: grid; justify-items: start; gap: var(--gap-stack); }
 
   /* Card: one white block; the box on its own stage at the top, then the name, the meta line,
      the verdict, four facts two by two, and a foot row with Difficulty and Compare */
@@ -399,7 +408,7 @@
     cursor: pointer;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .card { transition: box-shadow 150ms; }
+    .card { transition: box-shadow var(--motion-base) var(--motion-ease); }
   }
   .card:has(.compare:checked) { box-shadow: 0 0 0 2px var(--color-accent); }
   .card-inner { display: grid; grid-template-rows: auto 1fr; min-height: 100%; }
@@ -515,6 +524,31 @@
   }
   .tray-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tray-count { color: var(--color-ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: no-preference) {
+    /* The tray fades and rises from below the window's edge on arrival, and slides back down, unfaded and
+       gathering speed, on leaving. A hidden tray waits below the edge, invisible, rather than undisplayed,
+       so both directions run as plain transitions; visibility turns hidden only once the slide ends. */
+    .tray {
+      transition: opacity var(--motion-base) var(--motion-ease), translate var(--motion-base) var(--motion-ease),
+        visibility var(--motion-base);
+    }
+    .tray[hidden] {
+      display: block; visibility: hidden; opacity: 0; translate: 0 100%;
+      transition: translate var(--motion-base) var(--motion-ease-exit), visibility var(--motion-base),
+        opacity 0s var(--motion-base);
+    }
+    /* The item for a newly added game fades and scales in; items rebuilt with it do not animate */
+    .tray-item--new { animation: tray-settle var(--motion-base) var(--motion-ease); }
+  }
+  @keyframes tray-settle { from { opacity: 0; scale: var(--settle-scale); } }
+  /* A removed item's width closes to nothing as it leaves, so its contents clip rather than reflow */
+  .tray-item--leaving { flex: none; overflow: hidden; }
+
+  /* Filter and sort changes crossfade the grid as one image, at an even pace */
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-group(root) { animation-duration: var(--motion-base); }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-timing-function: linear; }
+  }
 
   @media (max-width: 40rem) {
     .tray-count { display: none; }
@@ -755,7 +789,10 @@
   .sheet .bar--foot { flex-wrap: wrap; justify-content: center; }
   .sheet .bar--foot .btn--primary { flex: 1 1 100%; }
   @media (prefers-reduced-motion: no-preference) {
-    .sheet, .sheet::backdrop { transition: translate 250ms ease, opacity 250ms ease, display 250ms allow-discrete, overlay 250ms allow-discrete; }
+    .sheet, .sheet::backdrop {
+      transition: translate var(--motion-slow) var(--motion-ease), opacity var(--motion-slow) var(--motion-ease),
+        display var(--motion-slow) var(--motion-ease) allow-discrete, overlay var(--motion-slow) var(--motion-ease) allow-discrete;
+    }
     .sheet { translate: 0 100%; }
     .sheet[open] { translate: 0 0; }
     @starting-style { .sheet[open] { translate: 0 100%; } }
@@ -792,7 +829,10 @@
     background: transparent; border-color: var(--color-disabled); color: var(--color-disabled); cursor: default;
   }
   @media (prefers-reduced-motion: no-preference) {
-    .btn { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, outline-offset 120ms ease; }
+    .btn {
+      transition: background-color var(--motion-quick) var(--motion-ease), border-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease), outline-offset var(--motion-quick) var(--motion-ease);
+    }
   }
   @media (forced-colors: active) {
     .btn[aria-pressed="true"], .btn--primary:not(:disabled) {
@@ -828,8 +868,8 @@
   .theme-switch-track:has(input[value="dark"]:checked) { --switch-index: 1; }
   .theme-switch-track:has(input[value="system"]:checked) { --switch-index: 2; }
   @media (prefers-reduced-motion: no-preference) {
-    .theme-switch-track::before { transition: translate 300ms ease; }
-    .theme-option { transition: color 120ms ease; }
+    .theme-switch-track::before { transition: translate var(--motion-slow) var(--motion-ease); }
+    .theme-option { transition: color var(--motion-quick) var(--motion-ease); }
   }
   .theme-option {
     position: relative; display: grid; place-items: center;
@@ -857,7 +897,7 @@
   .results-count { font: var(--weight-light) var(--text-name) var(--font); letter-spacing: var(--track-name); font-variant-numeric: tabular-nums; }
 
   /* Deck: the publisher's quote, and the bottom line on cards and in Details */
-  .lede, .bottom-line, .verdict, .compare-verdict { font: var(--weight-light) var(--text-deck) var(--font); }
+  .lede, .bottom-line, .verdict, .compare-verdict, .no-match p { font: var(--weight-light) var(--text-deck) var(--font); }
   /* The publisher's words in italic, marking them as quoted; the only italic on the page.
      The series name inside them in semibold. */
   .lede blockquote { font-style: italic; }
@@ -880,7 +920,7 @@
   }
 
   /* Body: running text, lists, filter options, the compare table's cells */
-  .story, .proscons li, .option-label, .compare-table td, .no-match p { font: var(--weight-regular) var(--text-body) var(--font); }
+  .story, .proscons li, .option-label, .compare-table td { font: var(--weight-regular) var(--text-body) var(--font); }
   .filter-group .option:has(:checked) .option-label { font-weight: var(--weight-semibold); }
 
   /* Value: fact values, buttons, counts, names in the tray, the skip link, Compare, the theme labels, store links */
@@ -1298,7 +1338,7 @@
       const values = state.selected[group.key].filter((value) => value !== input.value);
       state.selected[group.key] = input.checked ? [...values, input.value] : values;
     }
-    update();
+    update(true);
   });
   searchInput.addEventListener("input", () => {
     state.search = searchInput.value;
@@ -1319,13 +1359,13 @@
     const wasActive = pickIsActive(pick);
     resetFilters();
     if (!wasActive) Object.assign(state.selected, pick.sets);
-    update();
+    update(true);
   });
   const clearButton = $("clear-filters");
   clearButton.addEventListener("click", () => {
     if (clearButton.getAttribute("aria-disabled") === "true") return;
     resetFilters();
-    update();
+    update(true);
   });
 
   /* ---------- One update path: counts, options, cards, and every readout ---------- */
@@ -1334,7 +1374,7 @@
   sortSelect.value = state.sort;
   sortSelect.addEventListener("change", () => {
     state.sort = sortSelect.value;
-    update();
+    update(true);
   });
 
   const resultsCount = $("results-count");
@@ -1349,7 +1389,8 @@
   const withApplied = (text, applied) =>
     applied ? `<span>${text} (${applied}<span class="visually-hidden"> applied</span>)</span>` : text;
 
-  function update() {
+  /* `animated` runs the grid's change in a view transition: a filter, quick pick, Clear or Sort change, not search or the first render */
+  function update(animated = false) {
     const focused = document.activeElement;
     current = items.filter((item) => matches(item)).sort(comparators[state.sort]);
 
@@ -1377,8 +1418,62 @@
     clearButton.setAttribute("aria-disabled", String(applied === 0));
     showResults.textContent = `Show ${plural(current.length, "game")}`;
 
+    showGrid(animated);
+  }
+
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* The grid for the latest state, so a skipped transition's callback and a later one both end on the final grid */
+  function renderGrid() {
+    const scrolled = scrollY;
     if (current.length) grid.replaceChildren(...current.map((item) => item.card));
     else grid.replaceChildren(noMatch());
+    /* A shorter page that can no longer reach the old scroll position would strand the reader at its
+       bottom; the results' top comes into view instead */
+    const stranded = scrolled > document.documentElement.scrollHeight - innerHeight;
+    if (stranded && $("games").getBoundingClientRect().top < 0) glideToResults();
+  }
+
+  /* The share of the window the glide to the results' top covers */
+  const GLIDE_SHARE = 0.5;
+
+  /* Moves at once to a point below the results' top, before anything is drawn, then glides up the
+     rest of the way, so the reader never sees the page's bottom. At once under reduced motion. */
+  function glideToResults() {
+    const games = $("games");
+    if (reducedMotion.matches) {
+      games.scrollIntoView({ block: "start" });
+      return;
+    }
+    const target = scrollY + games.getBoundingClientRect().top - parseFloat(getComputedStyle(games).scrollMarginBlockStart);
+    window.scrollTo({ top: target + innerHeight * GLIDE_SHARE, behavior: "instant" });
+    window.scrollTo({ top: target, behavior: "smooth" });
+  }
+
+  /* The longest the crossfade waits for on-screen box photos, so a slow image never stalls the grid */
+  const PHOTO_WAIT = 150;
+
+  /* The new grid, captured once the box photos of cards on screen have decoded, so they fade in with their photos.
+     The window above counts too, since a glide to the results' top scrolls through it. */
+  async function renderGridWithPhotos() {
+    renderGrid();
+    const onScreen = [...grid.querySelectorAll(".card img")].filter((img) => {
+      const { top, bottom } = img.getBoundingClientRect();
+      return bottom > -innerHeight && top < innerHeight;
+    });
+    for (const img of onScreen) img.loading = "eager";
+    const decoded = Promise.all(onScreen.map((img) => img.decode().catch(() => {})));
+    await Promise.race([decoded, new Promise((done) => setTimeout(done, PHOTO_WAIT))]);
+  }
+
+  /* A crossfade of the grid: element-scoped where available, so the rest of the page stays interactive; document-scoped otherwise.
+     Under reduced motion, with the phone sheet open (the grid is behind it), or with neither method, the grid changes at once. */
+  function showGrid(animated) {
+    const scope = [grid, document].find((target) => typeof target.startViewTransition === "function");
+    if (animated && scope && !reducedMotion.matches && !sheet.open) {
+      /* A later change skips this transition, rejecting `ready`; the grid still ends on the latest state */
+      scope.startViewTransition(renderGridWithPhotos).ready.catch(() => {});
+    } else renderGrid();
   }
 
   function noMatch() {
@@ -1387,7 +1482,7 @@
     box.innerHTML = `<p>No games match these filters.</p><button class="btn" type="button">${withApplied("Clear all filters", appliedCount())}</button>`;
     box.querySelector("button").addEventListener("click", () => {
       resetFilters();
-      update();
+      update(true);
       $("games").focus();
     });
     return box;
@@ -1454,6 +1549,8 @@
 
   /* ---------- Compare ---------- */
   let compare = [];
+  /* The games the tray shows, so only a newly added one settles in */
+  let trayIds = [];
   const tray = $("tray");
   const trayNote = $("tray-note");
   const compareDialog = $("compare");
@@ -1505,14 +1602,49 @@
 
     tray.hidden = compare.length === 0;
     queueFit();
-    $("tray-items").innerHTML = compare.map((id) => {
+    /* An emptied tray leaves with its last contents in place and out of reach; the next add rebuilds them */
+    tray.inert = tray.hidden;
+    if (!compare.length) {
+      trayIds = [];
+      return;
+    }
+    const added = compare.filter((id) => !trayIds.includes(id));
+    const list = $("tray-items");
+    const leaving = trayIds.filter((id) => !compare.includes(id))
+      .map((id) => ({ index: trayIds.indexOf(id), item: list.querySelector(`[data-remove="${id}"]`)?.closest(".tray-item") }))
+      .filter(({ item }) => item)
+      .map((leaver) => ({ ...leaver, width: leaver.item.getBoundingClientRect().width }));
+    trayIds = [...compare];
+    list.innerHTML = compare.map((id) => {
       const { game } = byId.get(id);
-      return `<li class="tray-item">${thumb(game)}<span class="tray-name">${esc(game.name)}</span><button class="btn btn--icon btn--quiet" type="button" data-remove="${id}" aria-label="Remove ${esc(game.name)} from compare">${icon("i-close")}</button></li>`;
+      return `<li class="tray-item${added.includes(id) ? " tray-item--new" : ""}">${thumb(game)}<span class="tray-name">${esc(game.name)}</span><button class="btn btn--icon btn--quiet" type="button" data-remove="${id}" aria-label="Remove ${esc(game.name)} from compare">${icon("i-close")}</button></li>`;
     }).join("");
+    if (!reducedMotion.matches) for (const { index, item, width } of leaving) leaveTray(list, item, index, width);
     $("tray-count").innerHTML = `${compare.length} of ${MAX_COMPARE}<span class="visually-hidden"> games chosen</span>`;
     openCompare.textContent = `Compare ${plural(compare.length, "game")}`;
     openCompare.disabled = compare.length < 2;
     if (compareDialog.open) renderCompareTable();
+  }
+
+  /* A removed game's tray item, put back at its old place out of reach, shrinks and fades out as its
+     neighbours close the gap, the reverse of settling in; then it is gone. `width` is measured before the tray was rebuilt. */
+  function leaveTray(list, item, index, width) {
+    const tokens = getComputedStyle(document.documentElement);
+    const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+    item.classList.remove("tray-item--new");
+    item.classList.add("tray-item--leaving");
+    item.inert = true;
+    item.setAttribute("aria-hidden", "true");
+    item.querySelector("[data-remove]")?.removeAttribute("data-remove");
+    list.insertBefore(item, list.children[index] ?? null);
+    const padding = getComputedStyle(item).paddingInlineStart;
+    item.animate(
+      [
+        { opacity: 1, scale: 1, width: `${width}px`, paddingInlineStart: padding, marginInlineEnd: "0px" },
+        { opacity: 0, scale: tokens.getPropertyValue("--settle-scale"), width: "0px", paddingInlineStart: "0px", marginInlineEnd: `${-gap}px` },
+      ],
+      { duration: parseFloat(tokens.getPropertyValue("--motion-base")), easing: tokens.getPropertyValue("--motion-ease-exit") },
+    ).finished.then(() => item.remove(), () => item.remove());
   }
 
   /* Removing a game moves focus to the remove button that takes its place, or the one before it */
@@ -1521,7 +1653,8 @@
     const index = removeButtons().findIndex((button) => button.dataset.remove === id);
     compare = compare.filter((other) => other !== id);
     renderCompare();
-    const remaining = removeButtons();
+    /* An emptied tray still holds its last remove button while it leaves */
+    const remaining = compare.length ? removeButtons() : [];
     const next = remaining[Math.min(index, remaining.length - 1)];
     if (next) next.focus();
     else if (compareDialog.open) compareDialog.close();
@@ -1669,12 +1802,16 @@
   details.addEventListener("close", () => {
     const item = detailsItem;
     detailsItem = null;
+    const returnFocus = () => item?.card.querySelector(".card-link").focus();
     if (byId.has(decodeURIComponent(location.hash.slice(1)))) {
-      if (pushedEntry) history.back();
-      else history.replaceState(null, "", location.pathname + location.search);
+      /* Going back to an earlier fragment such as #games moves focus to its target, so focus returns again once it lands */
+      if (pushedEntry) {
+        history.back();
+        addEventListener("hashchange", returnFocus, { once: true });
+      } else history.replaceState(null, "", location.pathname + location.search);
     }
     pushedEntry = false;
-    item?.card.querySelector(".card-link").focus();
+    returnFocus();
   });
   closeOnBackdrop(details);
   closeOnBackdrop(sheet);

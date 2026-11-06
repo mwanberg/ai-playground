@@ -30,14 +30,16 @@
     --weight-bold: 700;
 
     /* Type roles: size / line height. The type layer assigns them. */
-    --text-label: 0.75rem / 1rem;
+    /* The label's line height, which the Details actions also space by */
+    --leading-label: 1rem;
+    --text-label: 0.75rem / var(--leading-label);
     --text-meta: 0.875rem / 1.25rem;
     --text-value: 1rem / 1.25rem;
     --text-body: 1rem / 1.5rem;
     --text-deck: 1.25rem / 1.75rem;
     --text-name: 1.5rem / 1.875rem;
     --text-title: 2rem / 2.25rem;
-    --text-display: clamp(3.5rem, 1.5rem + 8vw, 8rem) / 0.9;
+    --text-display: min(8rem, 1.5rem + 8vw) / 0.9;
     --track-label: 0.08em;
     --track-name: -0.01em;
     --track-title: -0.02em;
@@ -53,7 +55,7 @@
     --space-10: 2.5rem;
     --space-12: 3rem;
 
-    /* Spacing roles: every margin, padding and gap names one of these */
+    /* Spacing roles, named by where the space is used */
     --gap-label: 0.125rem;           /* a label over its value; the one space off the 4px rhythm */
     --gap-hair: var(--space-1);      /* icon to its text, dot to dot */
     --gap-tight: var(--space-2);     /* related controls side by side; a label beside its value */
@@ -65,6 +67,8 @@
     --inset: var(--space-6);         /* padding of containers: page edge, dialogs, sheet, panel */
     --inset-card: var(--space-5);    /* padding of cards and table cells */
 
+    /* A checkbox's corners */
+    --radius-xs: 0.3rem;
     --radius-s: 0.375rem;
     --radius-m: 0.5rem;
     --radius-pill: 999px;
@@ -77,8 +81,12 @@
     --target-min: 2.75rem;
     --target-compact: 2rem;
     --target-tool: 2.5rem;           /* Sort and the Columns switch, side by side in the results bar */
+    --target-row: 1.5rem;            /* the row a Compare box sits on, at the 24px minimum target size */
     --option-height: 2.25rem;
-    --tray-clearance: 6rem;
+    --tray-pad: var(--space-4);
+    /* The space reserved below the page's end and as bottom scroll padding while the tray shows: the tray's one
+       row of targets and its padding, and a gap above it */
+    --tray-clearance: calc(var(--target-min) + 2 * var(--tray-pad) + var(--gap-group));
     --focus-width: 3px;
     --focus-offset: 3px;
     --switch-option: var(--target-min);
@@ -161,10 +169,23 @@
   @media (width <= 40rem) {
     :root { --inset: var(--space-4); --gap-region: var(--space-6); }
   }
+  /* On the narrowest phones the tray's thumbnails and button can wrap to two rows, so the clearance reserves both */
+  @media (width <= 24rem) {
+    :root { --tray-clearance: calc(2 * var(--target-min) + var(--gap-tight) + 2 * var(--tray-pad) + var(--gap-group)); }
+  }
+  /* Short windows: the fixed tray's padding is a step smaller */
+  @media (height <= 30rem) {
+    :root { --tray-pad: var(--space-3); }
+  }
 
-  /* Below 64rem the title runs the full measure: "EXIT Games" sets at 5.0 times the font size,
-     so the size is the measure over 5.05, capped at the desktop's 8rem. The measure is the
-     masthead's width in container units, since 100vw also counts a classic scrollbar. */
+  /* More contrast asked for: hairlines take the control border, and the disabled grey moves a step toward the text */
+  @media (prefers-contrast: more) {
+    :root { --color-line: var(--color-control-line); --color-disabled: light-dark(#767C88, #7D8696); }
+  }
+
+  /* Below 64rem the title runs the full measure: the size is the measure over 5.05, the width of "EXIT Games" in
+     ems in Hanken Grotesk at these weights with a little room to spare, capped at the desktop's 8rem. The measure
+     is the masthead's width in container units, since 100vw also counts a classic scrollbar. */
   @media (width <= 64rem) {
     :root { --text-display: min(8rem, 100cqi / 5.05) / 0.9; }
   }
@@ -200,8 +221,12 @@
 
   /* The masthead: a light title with the publisher's quote as a deck, full width on phones,
      two thirds of the grid under the title from 40rem, and beside the title on wide screens */
-  /* A container, so the title's fitted size can read the measure */
-  .masthead { container-type: inline-size; padding-block: var(--space-12) var(--space-10); }
+  /* A container, so the title's size can be fitted to its width in container units. The title's first line is
+     trimmed to its capitals in the type layer, so the space above the capitals equals the space below the last line. */
+  .masthead { container-type: inline-size; padding-block: var(--space-12); }
+  /* Optical alignment: the title moves left by the bold E's side bearing, so the ink of "EXIT" lines up with the
+     content edge below it. Specific to Hanken Grotesk's bold E. */
+  .masthead h1 { margin-inline-start: -0.062em; }
   .lede { margin: var(--gap-section) 0 0; }
   .lede blockquote { margin: 0; }
   .lede-source { margin-block-start: var(--gap-row); }
@@ -213,7 +238,7 @@
     .lede { grid-column: 1 / span 16; }
   }
   @media (width > 64rem) {
-    .masthead { align-items: end; padding-block: var(--space-12); }
+    .masthead { align-items: end; }
     .masthead h1 { grid-column: 1 / span 14; }
     .lede { grid-column: 15 / -1; margin: 0; }
   }
@@ -254,19 +279,31 @@
     .catalog > main { grid-column: 7 / -1; }
   }
 
-  /* The tray covers the bottom of the window, so the page keeps room beneath its end */
+  /* The tray covers the bottom of the window, so the page keeps room beneath its end, and an element
+     scrolled into view, by focus or by script, stops above the tray */
   body:has(.tray:not([hidden])) { padding-block-end: var(--tray-clearance); }
+  html:has(.tray:not([hidden])) { scroll-padding-block-end: var(--tray-clearance); }
 
-  /* The footer is a colophon on the ground: space separates it, not a rule */
-  .site-footer { margin-block-start: var(--gap-region); }
+  /* The footer is a colophon on the ground: space separates it, not a rule. Above its contents sit the
+     catalog's end margin and the top padding, so the bottom padding is both, and the space is even. */
   .footer-inner {
-    display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between;
-    gap: var(--gap-stack) var(--gap-section); padding-block: var(--gap-region) var(--space-10);
+    display: flex; flex-wrap: wrap; align-items: start; justify-content: center;
+    gap: var(--gap-section); padding-block: var(--gap-region) calc(2 * var(--gap-region));
   }
-  .footer-text { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-tight) var(--gap-region); max-width: 60rem; color: var(--color-ink-muted); }
+  /* The text block's auto end margin absorbs its line's spare room: on one line with the theme switch the switch sits
+     at the end, and once the switch wraps to a line of its own, it is centered alone */
+  .footer-text { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-tight) var(--gap-region); max-width: 60rem; margin-inline-end: auto; color: var(--color-ink-muted); }
   @media (width <= 44rem) {
     .footer-text { grid-template-columns: minmax(0, 1fr); }
   }
+  /* Credit links sit on the ground, where the light theme's clickable teal is under the page's 7:1 for text, so they
+     rest in the stronger teal, as the other teal text on the ground does, and hover by thickening the underline */
+  .footer-link {
+    color: var(--color-accent-strong);
+    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
+  }
+  .footer-link:hover { text-decoration-thickness: 2px; }
+  .footer-link svg { width: 0.65em; height: 0.65em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: 0.05em; }
 }
 
 /* ---------- Components: layout, color and spacing only; type comes from the type layer ---------- */
@@ -291,7 +328,11 @@
     border: 1px solid var(--color-control-line); border-radius: var(--radius-m);
     background: var(--color-surface);
   }
-  .search { inline-size: 100%; }
+  /* Narrower sides than the other fields, so the placeholder fits the six-column Filters panel. The clear button that
+     Chromium and Safari draw in a search field keeps its room while hidden, so it leaves the layout until there is
+     text to clear. */
+  .search { inline-size: 100%; padding-inline: var(--gap-row); }
+  .search:placeholder-shown::-webkit-search-cancel-button { display: none; }
   /* A hovered search field's edge strengthens like a hovered checkbox's: 2px in the clickable color, the
      extra pixel drawn inside so nothing moves */
   .search:hover { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
@@ -300,15 +341,16 @@
   }
 
   /* Sort: the select keeps its native menu and dresses as a button; the arrow is drawn */
-  .select-wrap { position: relative; display: grid; color: var(--color-accent); }
+  .select-wrap { --arrow: 1rem; position: relative; display: grid; color: var(--color-accent); }
+  /* The text stops short of the arrow, its inset, and the gap before it */
   select.field {
     appearance: none; cursor: pointer;
     border-color: transparent; color: var(--color-accent);
-    padding-inline-end: calc(var(--inset-card) + 1rem + var(--gap-tight));
+    padding-inline-end: calc(var(--inset-card) + var(--arrow) + var(--gap-tight));
   }
   .select-arrow {
     position: absolute; inset-inline-end: var(--inset-card); inset-block-start: 50%;
-    translate: 0 -50%; inline-size: 1rem; block-size: 1rem;
+    translate: 0 -50%; inline-size: var(--arrow); block-size: var(--arrow);
     fill: currentColor; pointer-events: none;
   }
   /* Hovered, it fills like a button; the open menu keeps ink on white */
@@ -319,12 +361,12 @@
   .sort .select-wrap { flex: 1; min-inline-size: 0; }
   .results-tools select.field { min-height: var(--target-tool); }
 
-  /* Filters panel: one white block holding search, quick picks and the filter groups, with Clear
+  /* Scrolled to, the results' top lines up with the stuck Filters panel */
+  #games { scroll-margin-block-start: var(--gap-stack); }
+  /* Filters panel: one recessed block holding search, quick picks and the filter groups, with Clear
      all filters at the bottom. The page script sets --panel-max to the room between the panel's
      top and the bottom of the window, so the footer stays in view before the panel sticks;
      without it the panel fills the window once stuck. */
-  /* Scrolled to, the results' top lines up with the stuck Filters panel */
-  #games { scroll-margin-block-start: var(--gap-stack); }
   .filters-panel {
     position: sticky; inset-block-start: var(--gap-stack);
     max-block-size: var(--panel-max, calc(100dvh - 2 * var(--gap-stack)));
@@ -374,7 +416,7 @@
   /* Checkboxes and radios draw their own box in the clickable color, filled when checked */
   .option input {
     appearance: none; inline-size: 1.125rem; block-size: 1.125rem; margin: 0; cursor: inherit;
-    border: 2px solid var(--color-accent); border-radius: 0.3rem; background: var(--color-surface);
+    border: 2px solid var(--color-accent); border-radius: var(--radius-xs); background: var(--color-surface);
     display: grid; place-content: center;
   }
   .option input[type="radio"] { border-radius: 50%; }
@@ -396,7 +438,7 @@
     .option input:checked::before { background: HighlightText; }
   }
   .option-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--gap-hair) var(--gap-tight); }
-  .option-count, .pick-count { color: var(--color-ink-muted); font-variant-numeric: tabular-nums; }
+  .option-count, .pick-count { color: var(--color-ink-muted); }
   /* A filter option's count sits at the row's end, joined to the label by a dotted leader on the text's baseline */
   .filter-group .option-label { display: flex; flex-wrap: nowrap; align-items: baseline; column-gap: var(--gap-hair); }
   .filter-group .option-label > span:not(.option-count) { min-inline-size: 0; }
@@ -414,8 +456,8 @@
   .option:has(input:is(:disabled, [aria-disabled="true"])) .option-label, .option:has(input:disabled) .option-count { color: var(--color-disabled); }
   /* Forced colors: GrayText, the system's disabled color, as on the Clear button */
   @media (forced-colors: active) {
-    .option input[aria-disabled="true"] { border-color: GrayText; }
-    .option:has(input[aria-disabled="true"]) .option-label { color: GrayText; }
+    .option input:is(:disabled, [aria-disabled="true"]) { border-color: GrayText; }
+    .option:has(input:is(:disabled, [aria-disabled="true"])) :is(.option-label, .option-count) { color: GrayText; }
   }
 
   /* Results bar: the count, and Sort and the Columns switch beside it on wide screens */
@@ -439,10 +481,17 @@
   }
   .columns .option:first-of-type { border-start-start-radius: var(--radius-m); border-end-start-radius: var(--radius-m); }
   .columns .option:last-of-type { border-start-end-radius: var(--radius-m); border-end-end-radius: var(--radius-m); }
-  .columns .option:hover, .columns .option:has(:checked) { background: var(--color-accent); color: var(--color-on-accent); }
+  .columns .option:has(:checked) { background: var(--color-accent); color: var(--color-on-accent); }
+  /* The unchosen side takes the options' hover tint, not a fill, so it never looks selected */
+  .columns .option:not(:has(:checked)):hover { background: var(--color-bg); color: var(--color-accent-strong); }
   /* The radio covers its segment unseen, so the whole segment is the click target */
   .columns .option input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; border: 0; border-radius: inherit; opacity: 0; }
   .columns .option:has(input:focus-visible) { outline-offset: 2px; z-index: 1; }
+  /* Forced colors replace the fill, so the chosen side takes the system highlight and both sides an edge */
+  @media (forced-colors: active) {
+    .columns .option { border: 1px solid ButtonText; }
+    .columns .option:has(:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  }
   /* Three cards are too narrow below 75rem */
   @media (width <= 75rem) {
     .columns { display: none; }
@@ -464,18 +513,25 @@
     .card { transition: box-shadow var(--motion-base) var(--motion-ease); }
   }
   .card:has(.compare:checked) { box-shadow: 0 0 0 2px var(--color-accent); }
+  /* Forced colors drop the shadow, so the ring becomes an outline */
+  @media (forced-colors: active) {
+    .card:has(.compare:checked) { outline: 2px solid Highlight; }
+  }
 
   /* The card light: one blurred shape behind the grid that settles under the hovered or keyboard-focused card.
      The cards are opaque, so only its soft edge shows around a card, and its denser core shows in the gaps as it
-     passes. It is 0.5rem narrower than the card on each side and starts 0.75rem lower; the script sets its place
-     and size when it moves to a card, and moves the core by transform, which needs no restyle of anything else. */
+     passes. It is narrower than the card by --light-inset-x on each side and starts --light-inset-y lower; the script
+     sets its place and size when it moves to a card, reads the insets from its margins to center the core, and moves
+     the core by transform, which needs no restyle of anything else. */
   #games { position: relative; }
   #grid { position: relative; z-index: 1; }
   .card-light {
+    --light-inset-x: var(--space-2);
+    --light-inset-y: var(--space-3);
     position: absolute; inset-block-start: 0; inset-inline-start: 0; z-index: 0;
     translate: var(--light-x, 0) var(--light-y, 0);
-    inline-size: calc(var(--light-w, 0px) - 1rem); block-size: calc(var(--light-h, 0px) - 0.75rem);
-    margin-inline-start: 0.5rem; margin-block-start: 0.75rem;
+    inline-size: calc(var(--light-w, 0px) - 2 * var(--light-inset-x)); block-size: calc(var(--light-h, 0px) - var(--light-inset-y));
+    margin-inline-start: var(--light-inset-x); margin-block-start: var(--light-inset-y);
     border-radius: var(--radius-m); overflow: clip; opacity: 0; pointer-events: none;
     background: var(--color-card-light);
     filter: blur(1.25rem);
@@ -514,7 +570,17 @@
     }
     .card-edge.is-on { opacity: 1; }
     @media (prefers-reduced-motion: no-preference) {
-      .card-edge { transition: opacity var(--motion-base) ease-in-out; }
+      .card-edge { transition: opacity var(--motion-base) var(--motion-ease); }
+    }
+  }
+  /* An unlit layer still counts toward the page's scroll height, and the cards reflow under it when the window or the
+     grid changes, so once it has faded out it collapses to the games area's corner and cannot extend the page past
+     its end. */
+  .card-light:not(.is-on), .card-edge:not(.is-on) { translate: 0 0; inline-size: 0; block-size: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .card-light:not(.is-on), .card-edge:not(.is-on) {
+      transition: opacity var(--motion-base) var(--motion-ease),
+        translate 0s var(--motion-base), inline-size 0s var(--motion-base), block-size 0s var(--motion-base);
     }
   }
   .card-edge-spot {
@@ -585,13 +651,13 @@
     .grid[data-columns="3"] .card-kind { flex-basis: 100%; margin-inline-start: 0; }
   }
   .card-year { color: var(--color-ink-muted); }
-  /* The name is the link, so it shows it. The whole card except its Compare row opens Details,
-     so hovering anywhere but that row gives the name its hover look. */
   /* The name's corners match a button's, so its focus ring takes the same rounded shape */
   .card-link { border-radius: var(--radius-m); color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 0.16em; }
+  /* The name is the link, so it shows it. The whole card except its Compare row opens Details,
+     so hovering anywhere but that row gives the name its hover look. */
   .card:hover:not(:has(.compare-check:hover)) .card-link { color: var(--color-accent-strong); text-decoration-thickness: 2.5px; }
 
-  /* Rating badge: the BoardGameGeek score on the attention tint with an amber star; grey when ratings are few.
+  /* Rating badge: the BoardGameGeek score on the attention tint with an orange star; grey when ratings are few.
      Three weights of attention: the score, then the scale muted, then the source as a label. */
   .rating, .rating > [aria-hidden] {
     display: inline-flex; white-space: nowrap; align-items: center; gap: var(--gap-hair);
@@ -599,45 +665,62 @@
   .rating {
     padding-inline: var(--gap-tight); border-radius: var(--radius-pill);
     background: var(--color-meaning-soft); color: var(--color-ink);
-    font-variant-numeric: tabular-nums;
   }
   .rating-scale { color: var(--color-ink-muted); }
   .rating svg { width: 0.9em; height: 0.9em; fill: var(--color-meaning-strong); }
   .rating-source { margin-inline-start: var(--gap-hair); }
   /* The count's dot already follows BGG's trailing letter-spacing; a margin too would leave more space before the dot than after */
   .rating-source + .rating-source { margin-inline-start: 0; }
-  .rating--none { background: var(--color-bg); color: var(--color-ink-muted); }
-  .rating--none svg { fill: currentColor; }
+  .rating--muted { background: var(--color-bg); color: var(--color-ink-muted); }
+  .rating--muted svg { fill: currentColor; }
 
   /* Facts: label over value. On a card the list lays its items straight into the body grid. */
   .card .facts { display: contents; }
   .fact { min-width: 0; }
   .fact dt { margin-block-end: var(--gap-label); }
-  .fact dd { font-variant-numeric: tabular-nums; }
-  .fact dd small { color: var(--color-ink-muted); }
+  .time-unit { color: var(--color-ink-muted); }
   .card .fact { order: 1; margin-block-end: var(--gap-row); }
-  /* The foot row: Difficulty and Compare share a 24px baseline row, the target minimum */
+  /* The foot row: Difficulty and Compare share one baseline row */
   .card .fact--wide { order: 2; grid-column: 1; grid-row: 5; align-self: end; margin: var(--gap-tight) 0 0; }
-  .card .fact--wide dd { display: flex; align-items: center; min-block-size: var(--space-6); }
+  .card .fact--wide dd { display: flex; align-items: center; min-block-size: var(--target-row); }
   /* Compare is a full-size target, since a miss on a card opens Details. Negative margins give the
-     extra height back, so the target grows into the space around the row and nothing moves. */
+     extra height back, so the target grows into the space around its row and nothing moves. */
   .compare-check {
-    --reach: calc((var(--target-min) - var(--row-height, var(--option-height))) / 2);
+    --reach: calc((var(--target-min) - var(--target-row)) / 2);
     min-block-size: var(--target-min); margin-block: calc(-1 * var(--reach));
   }
   .card .compare-check {
-    --row-height: var(--space-6);
     order: 3; grid-column: 2; grid-row: 5; align-self: end; justify-self: end; padding-block: 0;
     margin: calc(var(--gap-tight) - var(--reach)) calc(-1 * var(--gap-tight)) calc(-1 * var(--reach)) 0;
   }
   .compare-check .option-label { color: var(--color-accent); }
+  /* The limit note's toggletip: ink, the inverse of the page, set above the Compare label at its end and pointing
+     down at it. It is positioned from the label, so it moves nothing and stays inside the card. */
+  .compare-check { position: relative; }
+  .toggletip {
+    position: absolute; z-index: 3; inset-block-end: calc(100% + var(--gap-hair)); inset-inline-end: 0;
+    inline-size: max-content; max-inline-size: min(15rem, 80vw);
+    padding: var(--gap-tight) var(--gap-row); border-radius: var(--radius-m);
+    background: var(--color-ink); color: var(--color-bg); cursor: default;
+  }
+  .toggletip::after {
+    content: ""; position: absolute; inset-block-start: 100%; inset-inline-end: 1.75rem;
+    border: 0.375rem solid transparent; border-block-start-color: var(--color-ink);
+  }
+  /* Forced colors replace the ink with the page's colors, so the tip takes an edge, and the pointer keeps its transparent sides */
+  @media (forced-colors: active) {
+    .toggletip { border: 1px solid CanvasText; }
+    .toggletip::after { forced-color-adjust: none; border-block-start-color: CanvasText; }
+  }
   /* On the options' hover tint the label takes the hover color links use, which holds the text floor there */
   .compare-check:hover .option-label { color: var(--color-accent-strong); }
 
   /* Difficulty: five dots, like the LEVEL scale printed on each box; off dots are rings, so fill and color both tell.
-     --pip-on is the fill, amber unless a disabled option turns it the disabled grey. */
+     --pip-on is the fill, orange unless a disabled option turns it the disabled grey. --pip-inside is the
+     surface the dots sit on, which shows inside a half dot's empty half. */
   .level { display: flex; align-items: center; gap: var(--gap-tight); white-space: nowrap; }
-  .pips { display: inline-flex; gap: var(--gap-hair); --pip-on: var(--color-meaning); }
+  .pips { display: inline-flex; gap: var(--gap-hair); --pip-on: var(--color-meaning); --pip-inside: var(--color-surface); }
+  .filters-panel .pips { --pip-inside: var(--color-panel); }
   .pips i { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1.5px solid var(--color-control-line); background: transparent; }
   .pips i.on { background: var(--pip-on); border-color: var(--pip-on); }
   /* A half dot: the left half solid out to its edge, the right half an empty ring. Three
@@ -646,7 +729,7 @@
     border-color: transparent;
     background:
       linear-gradient(90deg, var(--pip-on) 50%, transparent 50%) border-box,
-      linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+      linear-gradient(var(--pip-inside), var(--pip-inside)) padding-box,
       linear-gradient(90deg, transparent 50%, var(--color-control-line) 50%) border-box;
   }
   .option:has(input:disabled) .pips { --pip-on: var(--color-disabled); }
@@ -662,7 +745,11 @@
     background: var(--color-surface);
     box-shadow: var(--shadow-tray);
   }
-  .tray-inner { display: flex; flex-wrap: nowrap; gap: var(--gap-tight); align-items: center; padding-block: var(--gap-stack); }
+  /* Forced colors drop the shadow, the tray's only edge */
+  @media (forced-colors: active) {
+    .tray { border-block-start: 1px solid CanvasText; }
+  }
+  .tray-inner { display: flex; flex-wrap: nowrap; gap: var(--gap-tight); align-items: center; padding-block: var(--tray-pad); }
   .tray-items { display: flex; gap: var(--gap-tight); flex: 1; min-inline-size: 0; flex-wrap: nowrap; padding: 0; list-style: none; }
   .tray-item {
     display: flex; align-items: center; gap: var(--gap-tight);
@@ -671,7 +758,8 @@
     border-radius: var(--radius-m); background: var(--color-bg);
   }
   .tray-name { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tray-count { color: var(--color-ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tray-go { display: none; }
+  .tray-count { color: var(--color-ink-muted); white-space: nowrap; }
   @media (prefers-reduced-motion: no-preference) {
     /* The tray fades and rises from below the window's edge on arrival, and slides back down, unfaded and
        gathering speed, on leaving. A hidden tray waits below the edge, invisible, rather than undisplayed,
@@ -739,42 +827,38 @@
     ::view-transition-old(dialog-photo), ::view-transition-new(dialog-photo) { block-size: 100%; object-fit: contain; }
     /* Compare shares nothing with its button, so its box settles empty and its content then fades in where it stands */
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-block) {
-      animation: dialog-content-in calc(var(--motion-slow) + var(--motion-base)) linear both;
+      animation: dialog-fade-in var(--motion-base) linear var(--motion-slow) both;
     }
-    /* Its title, Close, and the games' headers are in place the moment the box lands. The page script names
-       them dialog-lead-0 upward, one per part: the title, Close, then one header per game, so the list runs
-       to two more than the compare limit. */
+    /* Its title, Close, and the games' headers fade in over the end of the box's growth, so they are in place
+       the moment it lands. The page script names them dialog-lead-0 upward, one per part: the title, Close,
+       then one header per game, so the list runs to two more than the compare limit. */
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-0),
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-1),
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-2),
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-3),
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-4),
     :root[data-dialog-motion="open"][data-dialog="compare"]::view-transition-new(dialog-lead-5) {
-      animation: dialog-lead-in calc(var(--motion-slow) + var(--motion-base)) linear both;
+      animation: dialog-fade-in calc(var(--motion-slow) - var(--motion-base)) linear var(--motion-base) both;
     }
   }
   @keyframes dialog-part-out { 30%, to { opacity: 0; } }
   @keyframes dialog-part-in { from, 30% { opacity: 0; } 80%, to { opacity: 1; } }
   @keyframes dialog-title-out { 20%, to { opacity: 0; } }
   @keyframes dialog-title-in { from, 20% { opacity: 0; } 50%, to { opacity: 1; } }
-  /* Hidden for the box's 300ms, then a 200ms fade, as a share of the 500ms whole */
-  @keyframes dialog-content-in { from, 60% { opacity: 0; } }
-  /* 200ms to 300ms of the 500ms whole, so fully in as the box lands */
-  @keyframes dialog-lead-in { from, 40% { opacity: 0; } 60%, to { opacity: 1; } }
+  @keyframes dialog-fade-in { from { opacity: 0; } }
 
   @media (width <= 40rem) {
     .tray-count { display: none; }
     .tray-inner { flex-wrap: wrap; }
-    /* Below about 380px four thumbnails and the button take two rows, and the page keeps room for both */
-    @media (width <= 24rem) {
-      body { --tray-clearance: 9rem; }
-    }
     .tray-items { min-inline-size: auto; gap: var(--gap-hair); }
     .tray-item { flex: none; gap: 0; padding-inline: var(--gap-hair); }
     /* The names stay for screen readers: .visually-hidden's declarations, which a class cannot apply at one width only */
     .tray-item .tray-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     /* Four remove buttons push Compare off a phone screen; games are removed from their cards, Details or Compare */
     .tray-item [data-remove] { display: none; }
+    /* With the names hidden, each photo is a button that takes the reader to its game; elsewhere it is a plain thumbnail */
+    .tray-item > .thumb { display: none; }
+    .tray-go { display: block; padding: 0; border: 0; border-radius: var(--radius-s); background: none; cursor: pointer; }
     .tray .btn--primary { margin-inline-start: auto; white-space: nowrap; }
   }
 
@@ -812,7 +896,7 @@
   }
   .bar--foot { padding: var(--gap-row) var(--inset) var(--gap-stack); }
   .pane { overflow-y: auto; flex: 1; min-block-size: 0; overscroll-behavior: contain; scroll-timeline: --pane y; }
-  /* A focused scroll area (Firefox puts them in the Tab order) sits in a block that clips, so its ring is drawn inside its edge */
+  /* A focused scroll area (Details' is in the Tab order; Firefox adds the others) sits in a block that clips, so its ring is drawn inside its edge */
   .pane:focus-visible { outline-offset: calc(-1 * var(--focus-width)); }
   .has-pane { timeline-scope: --pane; }
   .bar--head::after, .bar--foot::before {
@@ -859,7 +943,7 @@
   /* The publisher description, the optional notes and the themes over the left 7 columns */
   .section--story { grid-column: 1 / span 7; display: grid; gap: var(--gap-section); align-content: start; }
   /* The ratings, then the review lists, over the right 5; a hairline closes the ratings */
-  .proscons { grid-column: 8 / -1; display: grid; gap: var(--gap-section); align-content: start; }
+  .details-aside { grid-column: 8 / -1; display: grid; gap: var(--gap-section); align-content: start; }
   .section--ratings { padding-block-end: var(--gap-group); border-block-end: 1px solid var(--color-line); }
   /* The actions end the content and stick to the pane's bottom edge, on the body's columns: Where
      to buy over the story, the BoardGameGeek link and Compare over the reviews, level with the
@@ -870,34 +954,44 @@
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); align-items: start;
     margin: 0 calc(-1 * var(--inset)) calc(-1 * var(--inset));
   }
+  /* Short windows: the actions end the content, so the pane keeps room to scroll */
+  @media (height <= 30rem) {
+    .details-actions { position: static; }
+    .details-actions::before { display: none; }
+  }
   .section--buy { grid-column: 1 / span 7; }
+  /* Its top padding clears the Where to buy label and the gap under it, so its line sits level with the store links */
   .details-more {
     grid-column: 8 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-section);
-    padding-block-start: calc(1rem + var(--gap-tight));
+    padding-block-start: calc(var(--leading-label) + var(--gap-tight));
   }
-  /* Compare's target grows into the space around the store links' line, so the two sides stay level */
-  .details-more .compare-check { --row-height: var(--space-6); }
+  /* Compare keeps to the line's end when the line wraps, so its toggletip, which reaches back from there, stays in the dialog */
+  .details-more .compare-check { margin-inline-start: auto; }
   /* Paragraphs a line apart; a subheading sits close over its paragraph */
   .story { max-width: 62ch; }
   .story > * + * { margin-block-start: var(--gap-stack); }
   .story > .story-heading + p { margin-block-start: var(--gap-hair); }
-  /* Themes: a labelled line of plain text, the label set above it like a fact's, one label line and the label gap */
-  .tags { display: flex; flex-wrap: wrap; gap: 0 var(--gap-tight); padding: calc(1rem + var(--gap-label)) 0 0; list-style: none; position: relative; }
-  .tags::before { content: "Themes"; position: absolute; inset-block-start: 0; }
+  /* Themes: a labelled line of plain text, the label over it like a fact's */
+  .themes { display: grid; gap: var(--gap-label); }
+  .tags { display: flex; flex-wrap: wrap; gap: 0 var(--gap-tight); padding: 0; list-style: none; }
   .tag + .tag::before { content: "\00b7"; margin-inline-end: var(--gap-tight); color: var(--color-ink-muted); }
-  .proscons ul { padding: 0; list-style: none; display: grid; gap: var(--gap-tight); align-content: start; }
-  .proscons li { display: grid; grid-template-columns: 1rem 1fr; gap: var(--gap-tight); }
-  .proscons svg { width: 1rem; height: 1rem; margin-block-start: 0.3rem; fill: var(--color-ink); }
+  .details-aside ul { padding: 0; list-style: none; display: grid; gap: var(--gap-tight); align-content: start; }
+  .details-aside li { display: grid; grid-template-columns: 1rem 1fr; gap: var(--gap-tight); }
+  .details-aside svg { width: 1rem; height: 1rem; margin-block-start: 0.3rem; fill: var(--color-ink); }
 
   /* Ratings: one line per source, the labels in a fixed column so the values line up */
   .scores { display: grid; gap: var(--gap-tight); }
   .score { display: flex; align-items: baseline; gap: 0 var(--gap-tight); }
   .score dt { flex: 0 0 9.5rem; min-inline-size: 0; }
-  .score dd { flex: 1; min-inline-size: 0; font-variant-numeric: tabular-nums; }
+  .score dd { flex: 1; min-inline-size: 0; }
   .score-scale, .score-count { color: var(--color-ink-muted); }
 
   .stores { display: flex; flex-wrap: wrap; gap: var(--gap-tight) var(--gap-section); padding: 0; list-style: none; }
+  /* Padding grows the link's target to the 24px minimum, and matching negative margins give the height back
+     where the link is laid out as a block (a flex item), so the text keeps its place */
   .store {
+    --reach: calc((var(--target-row) - 1lh) / 2);
+    padding-block: var(--reach); margin-block: calc(-1 * var(--reach));
     color: var(--color-accent);
     text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
   }
@@ -911,7 +1005,7 @@
     .details-stage { aspect-ratio: 3 / 2; }
     .details-stage, .details-head:has(.details-stage) .details-opening, .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
-    .section--story, .proscons { grid-column: 1 / -1; }
+    .section--story, .details-aside { grid-column: 1 / -1; }
     /* Phones: the actions are not sticky; they end the content, stacked */
     .details-actions { position: static; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); margin: 0; padding: 0; }
     .details-actions::before { display: none; }
@@ -939,7 +1033,6 @@
     padding: var(--inset-card);
     border-block-end: 1px solid var(--color-line);
     text-align: start; vertical-align: baseline;
-    font-variant-numeric: tabular-nums;
   }
   .compare-table col.label-col { inline-size: var(--label-col); }
   /* The table's outer cells keep the dialog's inset, so labels line up with the title and the last remove button with Close */
@@ -960,11 +1053,11 @@
   }
   .compare-table thead th:first-child { z-index: 4; }
 
-  /* The photo and the remove button share a row, so a long name gets the column's full width beneath */
-  .compare-head { --thumb: 3rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap-tight); align-items: center; }
-  .compare-head .thumb { grid-column: 1; grid-row: 1; }
-  .compare-head .btn { grid-column: 2; grid-row: 1; }
-  .compare-head .compare-name { grid-column: 1 / -1; grid-row: 2; overflow-wrap: anywhere; }
+  /* A game's header holds only its photo over its name, so a screen reader repeating it on each cell says the name alone */
+  .compare-head { --thumb: 3rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-tight); }
+  .compare-head .compare-name { overflow-wrap: anywhere; }
+  /* The remove buttons' row, under the header, each at its column's end */
+  .compare-table .compare-remove td { padding-block: var(--gap-tight); text-align: end; }
   .compare-table ul { padding-inline-start: var(--gap-stack); display: grid; gap: var(--gap-hair); }
   .compare-table .rating { white-space: normal; }
   .compare-table .stores { gap: var(--gap-hair); flex-direction: column; padding: 0; }
@@ -1042,9 +1135,18 @@
     background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-dialog);
   }
   .sheet[open] { display: flex; flex-direction: column; }
+  /* Forced colors drop the shadow and replace the scrim, so Details, Compare and the sheet take a border */
+  @media (forced-colors: active) {
+    .details, .sheet { border: 1px solid CanvasText; }
+  }
   /* Clear all filters sits centered on its row; Show n games fills the row below */
   .sheet .bar--foot { flex-wrap: wrap; justify-content: center; }
   .sheet .bar--foot .btn--primary { flex: 1 1 100%; }
+  /* Short windows: both on one row, so the filters keep room to scroll */
+  @media (height <= 30rem) {
+    .sheet .bar--foot { flex-wrap: nowrap; }
+    .sheet .bar--foot .btn--primary { flex: 1 1 auto; }
+  }
 
   /* Buttons: white blocks with clickable-color text that fill on hover; the main action is filled.
      Inside a white block a hairline marks the edge. Focus draws a ring that eases outward. */
@@ -1068,9 +1170,9 @@
   .btn--icon svg { width: 1rem; height: 1rem; fill: currentColor; }
   .btn--quiet { border-color: transparent; background: transparent; }
   .btn--compact { min-height: var(--target-compact); padding-inline: var(--gap-tight); }
-  /* Disabled buttons follow the one disabled rule: muted text, no fill, the shape kept by a hairline.
-     aria-disabled keeps the button focusable; its click handler does nothing. */
-  .btn:disabled, .btn:disabled:hover, .btn[aria-disabled="true"], .btn[aria-disabled="true"]:hover {
+  /* Disabled buttons look as the disabled options do: the disabled grey for text and hairline, no fill.
+     aria-disabled keeps the button focusable; its click handler returns without acting. */
+  .btn[aria-disabled="true"], .btn[aria-disabled="true"]:hover {
     background: transparent; border-color: var(--color-disabled); color: var(--color-disabled); cursor: default;
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -1078,14 +1180,14 @@
       transition: background-color var(--motion-quick) var(--motion-ease), border-color var(--motion-quick) var(--motion-ease),
         color var(--motion-quick) var(--motion-ease), outline-offset var(--motion-quick) var(--motion-ease);
     }
-    /* Every other hover change runs on the buttons' timing: the options' tint, the Columns switch,
+    /* These hover color changes run on the buttons' timing: the options' tint, the Columns switch,
        the name and store links' and Compare label's color, a quick pick's count, and Sort */
     .option, .card-link, .store, .compare-check .option-label, .pick-count, select.field, .select-wrap {
       transition: background-color var(--motion-quick) var(--motion-ease), color var(--motion-quick) var(--motion-ease);
     }
   }
   @media (forced-colors: active) {
-    .btn[aria-pressed="true"], .btn--primary:not(:disabled) {
+    .btn[aria-pressed="true"], .btn--primary:not([aria-disabled="true"]) {
       forced-color-adjust: none;
       background: Highlight; border-color: Highlight; color: HighlightText;
     }
@@ -1095,7 +1197,8 @@
   /* Footer theme switch: native radios under a sliding thumb, so keyboard use and
      announcements come from the browser. The script reveals it; without the script it
      could not work. Forced colors fix the scheme, so a choice would change nothing there. */
-  .theme-switch:not([hidden]) { display: flex; }
+  /* The label sits above the track at every width, centered over it, the gap a filter group's legend keeps above its options */
+  .theme-switch:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: var(--gap-tight); }
   @media (forced-colors: active) {
     .theme-switch:not([hidden]) { display: none; }
   }
@@ -1129,8 +1232,10 @@
   .theme-option:has(input:checked) { color: var(--color-on-accent); }
   /* An unchosen option takes the options' hover tint, not a fill, so it never reads as a second thumb */
   .theme-option:not(:has(input:checked)):hover { background: var(--color-bg); }
-  /* The radio is hidden, so the option shows its focus ring, drawn inside the track */
-  .theme-option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: calc(var(--focus-width) * -1); }
+  /* The radio is hidden, so the option shows its focus ring. Focus sits on the chosen option, which the
+     thumb fills in the ring's color, so the ring is drawn outside it, over the track and the ground, and
+     above the neighbouring options. */
+  .theme-option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: var(--focus-offset); z-index: 1; }
   .theme-option svg { inline-size: var(--switch-icon); block-size: var(--switch-icon); }
 }
 
@@ -1139,14 +1244,14 @@
   body { font: var(--weight-regular) var(--text-body) var(--font); }
 
   /* Display: the page title, light, with the series name bold */
-  .masthead h1 { font: var(--weight-display) var(--text-display) var(--font); letter-spacing: var(--track-display); }
+  .masthead h1 { font: var(--weight-display) var(--text-display) var(--font); letter-spacing: var(--track-display); text-box: trim-start cap alphabetic; }
   .masthead h1 strong { font-weight: var(--weight-bold); letter-spacing: -0.03em; }
 
   /* Title: the Filters panel and the dialogs */
   .dialog-title { font: var(--weight-light) var(--text-title) var(--font); letter-spacing: var(--track-title); }
 
   /* Running head: the results count, light at the name size */
-  .results-count { font: var(--weight-light) var(--text-name) var(--font); letter-spacing: var(--track-name); font-variant-numeric: tabular-nums; }
+  .results-count { font: var(--weight-light) var(--text-name) var(--font); letter-spacing: var(--track-name); }
 
   /* Deck: the publisher's quote, and the bottom line on cards and in Details */
   .lede, .bottom-line, .verdict, .compare-verdict, .no-match p { font: var(--weight-light) var(--text-deck) var(--font); }
@@ -1172,7 +1277,7 @@
   }
 
   /* Body: running text, lists, filter options, the compare table's cells */
-  .story, .proscons li, .option-label, .compare-table td { font: var(--weight-regular) var(--text-body) var(--font); }
+  .story, .details-aside li, .option-label, .compare-table td { font: var(--weight-regular) var(--text-body) var(--font); }
   .filter-group .option:has(:checked) .option-label { font-weight: var(--weight-semibold); }
 
   /* Value: fact values, buttons, the tray's count and names, the skip link, Compare, Details' themes,
@@ -1185,14 +1290,22 @@
 
   /* Meta, strong: the rating badge, the game type, the tags on the art, the compare table's headers, quick picks */
   .rating, .card-type, .card-flag, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
-  /* Meta, regular: the year, the rating's scale, a time's unit of play, counts, notes, the footer */
-  .card-year, .rating-scale, .fact dd small, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .tray-note { font: var(--weight-regular) var(--text-meta) var(--font); }
+  /* Meta, regular: the year, the rating's scale, a time's unit of play, counts, the footer, the limit note's toggletip */
+  .card-year, .rating-scale, .time-unit, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .toggletip { font: var(--weight-regular) var(--text-meta) var(--font); }
 
-  /* Label: small caps labels everywhere, muted. The one role that sets a color, so every label matches. */
-  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .tags::before, .rating-scale + .rating-source, .compare-table tbody th {
+  /* Label: uppercase labels everywhere, muted. The one role that sets a color, so every label matches. */
+  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .theme-label, .rating-scale + .rating-source, .compare-table tbody th {
     font: var(--weight-semibold) var(--text-label) var(--font);
     text-transform: uppercase; letter-spacing: var(--track-label);
     color: var(--color-ink-muted);
+  }
+
+  /* Tabular figures wherever numbers sit in columns or change in place. Last in the layer, since the font
+     shorthand above resets them on every element it styles; the second selector matches the descendants of
+     the owners whose children set their own font. */
+  :is(.results-count, .option-count, .pick-count, .tray-count, .rating, .fact dd, .score dd, .compare-table :is(th, td)),
+  :is(.rating, .fact dd, .score dd, .compare-table :is(th, td)) * {
+    font-variant-numeric: tabular-nums;
   }
 }
 </style>
@@ -1252,7 +1365,8 @@
     <div id="games" tabindex="-1">
       <h2 class="visually-hidden">Games</h2>
       <div class="results-bar" id="results-bar">
-        <p class="results-count" id="results-count" aria-live="polite"></p>
+        <p class="results-count" id="results-count"></p>
+        <p class="visually-hidden" id="results-status" role="status"></p>
         <div class="results-tools" id="results-tools">
           <div class="sort" id="sort">
             <label class="sort-label" id="sort-label" for="sort-select">Sort</label>
@@ -1263,8 +1377,8 @@
           </div>
           <fieldset class="columns" id="columns">
             <legend>Columns</legend>
-            <label class="option"><input type="radio" name="columns" value="2"><span class="option-label">2</span></label>
-            <label class="option"><input type="radio" name="columns" value="3"><span class="option-label">3</span></label>
+            <label class="option"><input type="radio" name="columns" value="2"><span class="option-label">2<span class="visually-hidden"> columns</span></span></label>
+            <label class="option"><input type="radio" name="columns" value="3"><span class="option-label">3<span class="visually-hidden"> columns</span></span></label>
           </fieldset>
         </div>
       </div>
@@ -1276,10 +1390,11 @@
 <footer class="site-footer">
   <div class="page footer-inner">
     <div class="footer-text">
-      <p>The games and box art belong to Kosmos (Thames &amp; Kosmos in the US), and the photos come from the Game Nerdz online store and BoardGameGeek. Fan-made, not affiliated with Kosmos or Thames &amp; Kosmos.</p>
+      <p>The games and box art belong to Kosmos (<a class="footer-link" href="https://thamesandkosmos.com/" target="_blank" rel="noopener">Thames &amp; Kosmos<span class="visually-hidden"> (opens in a new tab)</span><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-external"/></svg></a> in the US), and the photos come from the <a class="footer-link" href="https://www.gamenerdz.com/" target="_blank" rel="noopener">Game Nerdz<span class="visually-hidden"> (opens in a new tab)</span><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-external"/></svg></a> online store and <a class="footer-link" href="https://boardgamegeek.com/" target="_blank" rel="noopener">BoardGameGeek<span class="visually-hidden"> (opens in a new tab)</span><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-external"/></svg></a>. Fan-made, not affiliated with Kosmos or Thames &amp; Kosmos.</p>
       <p>Information about these games was collected from a variety of sources including the publisher’s website, BoardGameGeek, online retailers, and reviews. AI assisted with the initial data collection and a human reviewed, verified, and is responsible for the content.</p>
     </div>
-    <div class="theme-switch" role="radiogroup" aria-label="Theme" hidden>
+    <div class="theme-switch" role="radiogroup" aria-labelledby="theme-label" hidden>
+      <span class="theme-label" id="theme-label">Theme</span>
       <div class="theme-switch-track">
         <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="light"><svg aria-hidden="true"><use href="#i-sun"/></svg><span class="visually-hidden">Light</span></label>
         <label class="theme-option"><input class="visually-hidden" type="radio" name="theme" value="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg><span class="visually-hidden">Dark</span></label>
@@ -1311,6 +1426,7 @@
   <div class="bar bar--foot" id="sheet-foot">
     <button class="btn btn--primary" type="button" id="show-results"></button>
   </div>
+  <p class="visually-hidden" id="sheet-status" role="status"></p>
 </dialog>
 
 <dialog class="details has-pane" id="details" aria-labelledby="d-title">
@@ -1318,9 +1434,10 @@
     <h2 class="dialog-title" id="d-title"></h2>
     <form method="dialog"><button class="btn" type="submit">Close</button></form>
   </div>
-  <div class="pane" id="d-pane">
+  <div class="pane" id="d-pane" tabindex="0" role="region" aria-label="Game details">
     <div class="details-main" id="d-main"></div>
   </div>
+  <p class="visually-hidden" id="d-status" role="status"></p>
 </dialog>
 
 <dialog class="details details--compare" id="compare" aria-labelledby="c-title">
@@ -1329,7 +1446,7 @@
     <form method="dialog"><button class="btn" type="submit">Close</button></form>
   </div>
   <div class="compare-frame">
-    <div class="compare-scroll" tabindex="0" role="region" aria-labelledby="c-title">
+    <div class="compare-scroll" tabindex="0" role="region" aria-label="Comparison table">
       <table class="compare-table" id="compare-table"></table>
     </div>
     <div class="compare-shade" aria-hidden="true"></div>
@@ -1342,6 +1459,7 @@
 (() => {
   const games = window.GAMES;
   const MAX_COMPARE = 4;
+  const LIMIT_NOTE = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
 
   const $ = (id) => document.getElementById(id);
   const esc = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1369,12 +1487,14 @@
   const compareDialog = $("compare");
   const details = $("details");
   const dMain = $("d-main");
+  const dStatus = $("d-status");
 
   /* ---------- Ratings ---------- */
   const MIN_RATINGS = 50;
-  const scoreOf = (game) => (game.bggText != null ? Number(game.bggText) : null);
+  /* The BoardGameGeek average as the badge and the Ratings row show it */
+  const scoreText = (score) => score.toFixed(1);
   const isFew = (game) => !(game.bggCount >= MIN_RATINGS);
-  /* A game sits in its score's range, and also under Few ratings when it has too few; ranges read the score as shown */
+  /* A game sits in its score's range, and also under Few ratings when it has too few; ranges use the score as shown */
   const RATING_RANGES = [
     ["top", "7.5 and up", (item) => item.score >= 7.5],
     ["mid", "7.0 to 7.4", (item) => item.score >= 7 && item.score < 7.5],
@@ -1383,25 +1503,31 @@
   ];
   function scoreBadge(item) {
     const { score, few, game } = item;
-    if (score == null) return `<span class="rating rating--none">${icon("i-ring")}No rating</span>`;
-    const shown = score.toFixed(1);
+    if (score == null) return `<span class="rating rating--muted">${icon("i-ring")}No rating</span>`;
+    const shown = scoreText(score);
     const count = few ? `<span class="rating-source">· ${plural(game.bggCount, "rating")}</span>` : "";
     const spoken = `BoardGameGeek rating ${shown} out of 10${few ? `, from only ${plural(game.bggCount, "rating")}` : ""}`;
-    return `<span class="rating${few ? " rating--none" : ""}"><span aria-hidden="true">${icon("i-star")}<span class="rating-score">${shown}</span><span class="rating-scale">/ 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
+    return `<span class="rating${few ? " rating--muted" : ""}"><span aria-hidden="true">${icon("i-star")}${shown}<span class="rating-scale">/ 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
   }
 
   /* Description text as one string for search, subheadings included */
   const proseText = (blocks) => (blocks ?? []).map((block) => `${block.heading ?? ""} ${block.text}`).join(" ");
-  /* One view per game: the data plus what filtering and sorting need */
-  const items = games.map((game) => ({
-    game,
-    id: game.id,
-    score: scoreOf(game),
-    few: isFew(game),
-    difficultyKey: game.difficulty != null ? String(game.difficulty) : game.difficultyLabel === "Beginner" ? "beginner" : "none",
-    haystack: [game.name, proseText(game.description), proseText(game.notes), game.themes.join(" "), game.bottomLine, game.type].join(" ").toLowerCase(),
-    card: null,
-  }));
+  /* One view per game: the data plus what filtering and sorting need. Filtering on difficulty uses the dots
+     printed, with Beginner as its own option; sorting uses the level. */
+  const items = games.map((game) => {
+    /* A box that prints Beginner instead of dots is level 1 */
+    const level = game.difficulty ?? (game.difficultyLabel === "Beginner" ? 1 : null);
+    return {
+      game,
+      id: game.id,
+      score: game.bggAverage,
+      few: isFew(game),
+      level,
+      difficultyKey: game.difficulty != null ? String(game.difficulty) : level != null ? "beginner" : "none",
+      haystack: [game.name, proseText(game.description), proseText(game.notes), game.themes.join(" "), game.bottomLine, game.type].join(" ").toLowerCase(),
+      card: null,
+    };
+  });
   const byId = new Map(items.map((item) => [item.id, item]));
 
   /* ---------- Filters ---------- */
@@ -1468,13 +1594,11 @@
     if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
     return direction * (x - y) || byName(a, b);
   };
-  /* A box that prints Beginner instead of dots sorts as level 1 */
-  const levelOf = (game) => game.difficulty ?? (game.difficultyLabel === "Beginner" ? 1 : null);
   const SORTS = [
     ["rating-desc", "Rating: high to low", (item) => item.score, -1],
     ["rating-asc", "Rating: low to high", (item) => item.score, 1],
-    ["difficulty-asc", "Difficulty: easiest first", (item) => levelOf(item.game), 1],
-    ["difficulty-desc", "Difficulty: hardest first", (item) => levelOf(item.game), -1],
+    ["difficulty-asc", "Difficulty: easiest first", (item) => item.level, 1],
+    ["difficulty-desc", "Difficulty: hardest first", (item) => item.level, -1],
     ["price-asc", "Price: low to high", (item) => item.game.priceLow, 1],
     ["price-desc", "Price: high to low", (item) => item.game.priceLow, -1],
     ["time-asc", "Play time: shortest first", (item) => item.game.maxMinutes, 1],
@@ -1495,7 +1619,7 @@
   /* "45–75 min per adventure" reads as the time with its unit of play in small text */
   function timeHtml(text) {
     const split = text.match(/^(.*?) (per .+)$/);
-    return split ? `${esc(split[1])} <small>${esc(split[2])}</small>` : esc(text);
+    return split ? `${esc(split[1])} <small class="time-unit">${esc(split[2])}</small>` : esc(text);
   }
   function pips(value) {
     return Array.from({ length: 5 }, (_, i) => {
@@ -1503,10 +1627,13 @@
       return `<i class="${fill >= 1 ? "on" : fill > 0 ? "half" : ""}"></i>`;
     }).join("");
   }
+  /* Screen readers hear "level 4.5 out of 5"; the visible "4.5 / 5" is hidden from them */
   const difficultyHtml = (game) =>
     game.difficulty == null
       ? esc(game.difficultyLabel)
-      : `<span class="pips" aria-hidden="true">${pips(game.difficulty)}</span>${game.difficulty} / 5`;
+      : `<span class="pips" aria-hidden="true">${pips(game.difficulty)}</span><span aria-hidden="true">${game.difficulty} / 5</span><span class="visually-hidden">level ${game.difficulty} out of 5</span>`;
+  /* A pause between adjacent spans of the meta line, so screen readers do not run their words together */
+  const SPOKEN_COMMA = `<span class="visually-hidden">, </span>`;
   const difficultyClass = (game) => (game.difficulty == null ? "" : ' class="level"');
   const playersHtml = (game) => `${esc(game.players)} players`;
   /* ---------- Box photos ---------- */
@@ -1522,7 +1649,8 @@
     columns === "3" ? "(width < 80rem) calc(16.67vw - 2.25rem)" : "(width < 80rem) calc(25vw - 2.375rem)",
     columns === "3" ? "11.0625rem" : "17.625rem",
   ].join(", ");
-  /* Details: full screen up to 44rem; beside it a photo of 3 of the dialog's 12 columns, which stops growing at 49rem */
+  /* Details: full screen up to 44rem; wider, a photo of 3 of the dialog's 12 columns, which stops growing at 67rem,
+     where the dialog reaches its 64rem maximum */
   const DETAILS_SIZES = "(width <= 40rem) calc(66.67vw - 1.33rem), (width <= 44rem) calc(66.67vw - 2rem), (width < 67rem) calc(25vw - 2.625rem), 14.125rem";
   const THUMB_SIZES = "3rem";
 
@@ -1545,11 +1673,12 @@
     if (img.complete && img.naturalWidth) photo.dataset.loaded = "now";
     else img.addEventListener("load", () => { photo.dataset.loaded = photoWaits ? "now" : "fade"; }, { once: true });
   }
-  const storeLink = (store, game, showGame) =>
-    `<a class="store" href="${esc(store.url)}" target="_blank" rel="noopener">${esc(store.name)}${showGame ? `<span class="visually-hidden"> for ${esc(game.name)}</span>` : ""}<span class="visually-hidden"> (opens in a new tab)</span>${icon("i-external")}</a>`;
-  const storesHtml = (game, showGame) =>
+  /* Each link names its game for screen readers, so it reads alone in a list of links */
+  const storeLink = (store, game) =>
+    `<a class="store" href="${esc(store.url)}" target="_blank" rel="noopener">${esc(store.name)}<span class="visually-hidden"> for ${esc(game.name)}</span><span class="visually-hidden"> (opens in a new tab)</span>${icon("i-external")}</a>`;
+  const storesHtml = (game) =>
     game.stores.length
-      ? `<ul class="stores">${game.stores.map((store) => `<li>${storeLink(store, game, showGame)}</li>`).join("")}</ul>`
+      ? `<ul class="stores">${game.stores.map((store) => `<li>${storeLink(store, game)}</li>`).join("")}</ul>`
       : `<p>${esc(game.noStoreReason)}</p>`;
   const listHtml = (list) => `<ul>${list.map((text) => `<li>${esc(text)}</li>`).join("")}</ul>`;
   /* Description text as paragraphs, each with its subheading where it has one */
@@ -1597,11 +1726,12 @@
         <div class="card-body">
           <div class="card-head">
             <h3 class="card-title"><a class="card-link" id="card-${item.id}" href="#${item.id}">${esc(game.name)}</a></h3>
-            <p class="card-meta">${scoreBadge(item)}<span class="card-kind"><span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></span></p>
+            <p class="card-meta">${scoreBadge(item)}${SPOKEN_COMMA}<span class="card-kind"><span class="card-type">${esc(game.type)}</span>${SPOKEN_COMMA}<span class="card-year">${game.year}</span></span></p>
           </div>
           <p class="verdict">${esc(game.bottomLine)}</p>
           ${factsHtml(game)}
           <label class="option compare-check"><input class="compare" type="checkbox"><span class="option-label">Compare<span class="visually-hidden"> ${esc(game.name)}</span></span></label>
+          <span id="limit-${item.id}" hidden>${LIMIT_NOTE}</span>
         </div>
       </div>`;
     card.querySelectorAll(".photo").forEach(watchPhoto);
@@ -1644,18 +1774,18 @@
     const count = `<span class="option-count"><span class="count-number"></span><span class="visually-hidden count-unit"></span></span>`;
     const comma = `<span class="visually-hidden">,</span>`;
     if (group.key === "difficulty" && !Number.isNaN(Number(value))) {
-      return `<span class="pips" aria-hidden="true">${pips(Number(value))}</span><span>${label}${comma}</span> ${count}`;
+      return `<span class="pips" aria-hidden="true">${pips(Number(value))}</span><span>${esc(label)}${comma}</span> ${count}`;
     }
     return `<span>${esc(label)}${comma}</span> ${count}`;
   }
   $("filters-body").innerHTML = `
     <div class="panel-section">
       <label class="section-title" for="search">Search</label>
-      <input class="field search" id="search" type="search" placeholder="Name, theme, or story" autocomplete="off">
+      <input class="field search" id="search" type="search" placeholder="Name, theme, or description" autocomplete="off">
     </div>
     <div class="panel-section" role="group" aria-labelledby="picks-title">
       <h3 class="section-title" id="picks-title">Quick picks</h3>
-      <ul class="pick-list">${PICKS.map((pick, i) => `<li><button class="btn btn--pill btn--compact" type="button" aria-pressed="false" data-pick="${i}"><span>${esc(pick.name)} <span class="pick-count"></span></span></button></li>`).join("")}</ul>
+      <ul class="pick-list">${PICKS.map((pick, i) => `<li><button class="btn btn--pill btn--compact" type="button" aria-pressed="false" data-pick="${i}"><span>${esc(pick.name)} <span class="pick-count"></span><span class="visually-hidden pick-unit"></span></span></button></li>`).join("")}</ul>
     </div>
     <div class="panel-section">
       ${GROUPS.map((group) => `
@@ -1674,8 +1804,11 @@
   const searchInput = $("search");
   const pickButtons = [...filtersBody.querySelectorAll("[data-pick]")];
   const inputs = [...filtersBody.querySelectorAll(".option input")];
+  const unit = (count) => (count === 1 ? " game" : " games");
   PICKS.forEach((pick, i) => {
-    pickButtons[i].querySelector(".pick-count").textContent = items.filter((item) => pickMatches(item, pick.sets)).length;
+    const count = items.filter((item) => pickMatches(item, pick.sets)).length;
+    pickButtons[i].querySelector(".pick-count").textContent = count;
+    pickButtons[i].querySelector(".pick-unit").textContent = unit(count);
   });
 
   filtersBody.addEventListener("change", (event) => {
@@ -1691,7 +1824,7 @@
   });
   searchInput.addEventListener("input", () => {
     state.search = searchInput.value;
-    update();
+    update(false, true);
   });
 
   const sameValues = (a, b) => a.length === b.length && a.every((value) => b.includes(value));
@@ -1738,8 +1871,23 @@
   const withApplied = (text, applied) =>
     applied ? `<span>${text} (${applied}<span class="visually-hidden"> applied</span>)</span>` : text;
 
-  /* `animated` crossfades the grid's change; without it the grid changes at once */
-  function update(animated = false) {
+  const resultsStatus = $("results-status");
+  const sheetStatus = $("sheet-status");
+  /* Typing in Search announces the results once, this long after the last keystroke */
+  const TYPING_PAUSE = 500;
+  let announceTimer = 0;
+  /* The results go to the sheet's status line while it is open, since everything outside an open modal dialog
+     is inert, the page's status line included */
+  function announceResults(text, typing) {
+    clearTimeout(announceTimer);
+    const write = () => { (sheet.open ? sheetStatus : resultsStatus).textContent = text; };
+    if (typing) announceTimer = setTimeout(write, TYPING_PAUSE);
+    else write();
+  }
+
+  /* With `animated`, the grid's change crossfades; otherwise it changes at once. With `typing`, the
+     announcement waits until Search pauses. */
+  function update(animated = false, typing = false) {
     const focused = document.activeElement;
     searchWords = state.search.toLowerCase().split(/\s+/).filter(Boolean);
     current = items.filter((item) => matches(item)).sort(comparators[state.sort]);
@@ -1752,7 +1900,7 @@
       const count = items.filter((item) => matches(item, group.key) && (input.value === "any" || group.test(item, [input.value]))).length;
       const option = input.closest(".option");
       option.querySelector(".count-number").textContent = count;
-      option.querySelector(".count-unit").textContent = count === 1 ? " game" : " games";
+      option.querySelector(".count-unit").textContent = unit(count);
       input.disabled = count === 0 && !input.checked;
     }
     PICKS.forEach((pick, i) => pickButtons[i].setAttribute("aria-pressed", String(pickIsActive(pick))));
@@ -1764,6 +1912,7 @@
 
     const applied = appliedCount();
     resultsCount.textContent = applied ? `${current.length} of ${items.length} games` : `${items.length} games`;
+    announceResults(resultsCount.textContent, typing);
     filtersButton.innerHTML = withApplied("Filters", applied);
     clearButton.innerHTML = withApplied("Clear all filters", applied);
     clearButton.setAttribute("aria-disabled", String(applied === 0));
@@ -1883,8 +2032,8 @@
   showResults.addEventListener("click", () => closeDialog(sheet));
 
   /* The panel's height is the room between its top edge, which rises as the page scrolls
-     until the panel sticks, and the bottom of the window, less the gap it keeps from the top.
-     Narrow screens hide the panel, so there is nothing to fit. */
+     until the panel sticks, and the bottom of the window, less the gap it keeps from the top and the tray's
+     height while the tray shows. Narrow screens hide the panel, so there is nothing to fit. */
   let frame = 0;
   let panelMax = "";
   function fitPanel() {
@@ -1933,8 +2082,16 @@
     return Object.keys(from).filter((part) => from[part] && to[part]).map((part) => [part, from[part], to[part]]);
   }
 
-  /* The latest run, so only it clears the direction the stylesheet times the transition by */
+  /* The latest run, so only it clears the names and the direction the stylesheet times the transition by. A run
+     skipped by the next one can finish after the next run has named its parts, often the same elements, and
+     clearing them then leaves the next transition nothing to move. */
   let motionRun = 0;
+  /* Every element the runs have named, cleared together */
+  let namedParts = [];
+  function clearNames() {
+    for (const element of namedParts) element.style.viewTransitionName = "";
+    namedParts = [];
+  }
   function morphDialog(dialog, direction, from, to, swap, leads = []) {
     hideCardLight();
     if (typeof document.startViewTransition !== "function" || reducedMotion.matches) {
@@ -1942,24 +2099,29 @@
       return;
     }
     const pairs = pairParts(from, to);
-    const name = (side, on) => {
-      for (const pair of pairs) pair[side].style.viewTransitionName = on ? `dialog-${pair[0]}` : "";
-      if (side === 2) leads.forEach((lead, i) => { lead.style.viewTransitionName = on ? `dialog-lead-${i}` : ""; });
+    const name = (side) => {
+      const parts = pairs.map(([part, ...elements]) => [elements[side - 1], `dialog-${part}`]);
+      if (side === 2) leads.forEach((lead, i) => parts.push([lead, `dialog-lead-${i}`]));
+      for (const [element, partName] of parts) element.style.viewTransitionName = partName;
+      namedParts.push(...parts.map(([element]) => element));
     };
     const run = ++motionRun;
     const root = document.documentElement;
     root.dataset.dialogMotion = direction;
     root.dataset.dialog = dialog.id;
-    name(1, true);
+    clearNames();
+    name(1);
+    /* Only the latest run names parts; a skipped run's update only swaps the dialog */
     const transition = document.startViewTransition(() => {
-      name(1, false);
+      const latest = run === motionRun;
+      if (latest) clearNames();
       swap();
-      name(2, true);
+      if (latest) name(2);
     });
     transition.ready.catch(() => {});
     const done = () => {
-      name(2, false);
       if (run !== motionRun) return;
+      clearNames();
       delete root.dataset.dialogMotion;
       delete root.dataset.dialog;
     };
@@ -2003,14 +2165,11 @@
   /* The core leans toward the pointer within the light's middle 40%, clear of the halo at its edges */
   const CORE_MIN = 0.3;
   const CORE_MAX = 0.7;
-  /* The light is 1rem narrower and 0.75rem shorter than its card (the stylesheet's insets) */
-  const LIGHT_INSET_W = 1;
-  const LIGHT_INSET_H = 0.75;
   let litCard = null;
-  /* The lit card's box within the games area, the games area's page position, and the root font size, read once per card */
+  /* The lit card's box within the games area, the games area's page position, and the light's insets, read once per card */
   let litBox = null;
   let areaOrigin = null;
-  let remPx = 16;
+  let lightInset = { x: 0, y: 0 };
   let edgeTurn = 0;
   let lightLeaveTimer = 0;
   let lightPointer = null;
@@ -2032,8 +2191,8 @@
     const share = (value) => Math.min(CORE_MAX, Math.max(CORE_MIN, value));
     const coreX = pointer ? share(x / litBox.w) : 0.5;
     const coreY = pointer ? share(y / litBox.h) : 0.5;
-    const lightW = litBox.w - LIGHT_INSET_W * remPx;
-    const lightH = litBox.h - LIGHT_INSET_H * remPx;
+    const lightW = litBox.w - 2 * lightInset.x;
+    const lightH = litBox.h - lightInset.y;
     cardLight.firstElementChild.style.transform = `translate(${coreX * lightW}px, ${coreY * lightH}px)`;
   }
 
@@ -2045,8 +2204,9 @@
     const near = litBox && Math.abs(litBox.x - box.x) <= box.w * 1.2 && Math.abs(litBox.y - box.y) <= box.h * 1.2;
     const glide = Boolean(near) && !reducedMotion.matches;
     const root = getComputedStyle(document.documentElement);
+    const light = getComputedStyle(cardLight);
     areaOrigin = { x: areaRect.left + scrollX, y: areaRect.top + scrollY };
-    remPx = parseFloat(root.fontSize);
+    lightInset = { x: parseFloat(light.marginInlineStart), y: parseFloat(light.marginBlockStart) };
 
     cardLight.classList.toggle("is-gliding", glide);
     cardLight.style.setProperty("--light-x", `${box.x}px`);
@@ -2069,7 +2229,7 @@
 
     litCard = card;
     litBox = box;
-    placeSpots(pointer);
+    placeSpots(reducedMotion.matches ? null : pointer);
   }
 
   function trackLightPointer() {
@@ -2084,8 +2244,9 @@
     clearTimeout(lightLeaveTimer);
     lightUpCard(card, { x: event.pageX, y: event.pageY });
   });
+  /* Under reduced motion the core and the bright spot stay at their resting places, here and when a card lights */
   grid.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "touch") return;
+    if (event.pointerType === "touch" || reducedMotion.matches) return;
     lightPointer = { x: event.pageX, y: event.pageY };
     if (!lightFrame) lightFrame = requestAnimationFrame(trackLightPointer);
   });
@@ -2113,42 +2274,81 @@
     renderCompare();
   }
 
-  /* Every Compare checkbox (the cards' and Details') reads from the one list. At the limit the
-     unchecked boxes are aria-disabled, so they stay focusable, and their label carries the note as a tooltip. */
-  const LIMIT_NOTE = `Compare holds up to ${MAX_COMPARE} games. Remove one to add another.`;
+  /* Every Compare checkbox (the cards' and Details') is set from the one list. At the limit the
+     unchecked boxes are aria-disabled, so they stay focusable, and aria-describedby points each at
+     the note in its own card or Details. */
   function syncChecks() {
     const full = compare.length >= MAX_COMPARE;
-    const sync = (input, id) => {
+    const sync = (input, id, noteId) => {
       input.checked = compare.includes(id);
       const limited = full && !input.checked;
-      if (limited) input.setAttribute("aria-disabled", "true");
-      else input.removeAttribute("aria-disabled");
-      input.closest(".compare-check").title = limited ? LIMIT_NOTE : "";
+      for (const [name, value] of [["aria-disabled", "true"], ["aria-describedby", noteId]]) {
+        if (limited) input.setAttribute(name, value);
+        else input.removeAttribute(name);
+      }
     };
-    for (const item of items) sync(item.card.querySelector(".compare"), item.id);
-    if (detailsItem) sync($("d-compare"), detailsItem.id);
+    for (const item of items) sync(item.card.querySelector(".compare"), item.id, `limit-${item.id}`);
+    if (detailsItem) sync($("d-compare"), detailsItem.id, "d-limit");
   }
 
+  /* The status line for the limit note: Details' own while it is open, since everything outside an open
+     modal dialog is inert, the tray's status line included */
+  const noteRegion = () => (details.open ? dStatus : trayNote);
   /* The status line is cleared, then set again in a later task, so screen readers announce a repeated note */
   const NOTE_DELAY = 100;
   let noteTimer = 0;
   function announceLimit() {
     clearTimeout(noteTimer);
-    trayNote.textContent = "";
+    const region = noteRegion();
+    region.textContent = "";
     noteTimer = setTimeout(() => {
-      if (compare.length >= MAX_COMPARE) trayNote.textContent = LIMIT_NOTE;
+      if (compare.length >= MAX_COMPARE) region.textContent = LIMIT_NOTE;
     }, NOTE_DELAY);
   }
-  /* Activating an aria-disabled Compare box changes nothing and announces the note. Returns true when it handled the event. */
+  /* Activating an aria-disabled Compare box changes nothing, shows the note in a toggletip and announces it.
+     Returns true when it handled the event. */
   function refuseAtLimit(event) {
     if (!event.target.matches('.compare[aria-disabled="true"]')) return false;
     event.preventDefault();
+    showTip(event.target);
     announceLimit();
     return true;
   }
 
+  /* ---------- The limit note's toggletip ---------- */
+  /* The tip sits inside the box's label, so a press on it stays on the box and nothing beside it moves. The
+     status lines carry the note to screen readers, so the tip is hidden from them. It closes on Escape, on a
+     press outside the label, and when focus moves to anything but its box. */
+  let tip = null;
+  function closeTip() {
+    tip?.remove();
+    tip = null;
+  }
+  function showTip(input) {
+    const label = input.closest(".compare-check");
+    if (tip?.parentElement === label) return;
+    closeTip();
+    tip = Object.assign(document.createElement("span"), { className: "toggletip", textContent: LIMIT_NOTE });
+    tip.setAttribute("aria-hidden", "true");
+    label.append(tip);
+  }
+  document.addEventListener("click", (event) => {
+    if (tip && !tip.parentElement?.contains(event.target)) closeTip();
+  });
+  document.addEventListener("focusin", (event) => {
+    if (tip && event.target !== tip.parentElement?.querySelector(".compare")) closeTip();
+  });
+  /* A cancelled Escape keydown makes no close request, so an open Details stays open while its tip closes */
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !tip) return;
+    event.preventDefault();
+    closeTip();
+  });
+
   function renderCompare() {
-    trayNote.textContent = compare.length >= MAX_COMPARE ? LIMIT_NOTE : "";
+    const full = compare.length >= MAX_COMPARE;
+    trayNote.textContent = full ? LIMIT_NOTE : "";
+    if (details.open) dStatus.textContent = full ? LIMIT_NOTE : "";
     syncChecks();
 
     tray.hidden = compare.length === 0;
@@ -2168,12 +2368,13 @@
     trayIds = [...compare];
     list.innerHTML = compare.map((id) => {
       const { game } = byId.get(id);
-      return `<li class="tray-item${added.includes(id) ? " tray-item--new" : ""}">${thumb(game)}<span class="tray-name">${esc(game.name)}</span>${removeButton(game)}</li>`;
+      return `<li class="tray-item${added.includes(id) ? " tray-item--new" : ""}">${thumb(game)}<button class="tray-go" type="button" data-go="${id}" aria-label="Go to ${esc(game.name)}">${thumb(game)}</button><span class="tray-name">${esc(game.name)}</span>${removeButton(game)}</li>`;
     }).join("");
     if (!reducedMotion.matches) for (const { index, item, width } of leaving) leaveTray(list, item, index, width);
     $("tray-count").innerHTML = `${compare.length} of ${MAX_COMPARE}<span class="visually-hidden"> games chosen</span>`;
     openCompare.textContent = `Compare ${plural(compare.length, "game")}`;
-    openCompare.disabled = compare.length < 2;
+    /* aria-disabled, so the button stays focusable and focus can return to it when Compare closes */
+    openCompare.setAttribute("aria-disabled", String(compare.length < 2));
     if (compareDialog.open) renderCompareTable();
   }
 
@@ -2187,6 +2388,7 @@
     item.inert = true;
     item.setAttribute("aria-hidden", "true");
     item.querySelector("[data-remove]")?.removeAttribute("data-remove");
+    item.querySelector("[data-go]")?.removeAttribute("data-go");
     list.insertBefore(item, list.children[index] ?? null);
     const padding = getComputedStyle(item).paddingInlineStart;
     item.animate(
@@ -2213,9 +2415,21 @@
     else if (compareDialog.open) closeDialog(compareDialog);
     else (box.isConnected ? box : gamesArea).focus();
   }
+  /* Handles a tray photo's press, where the tray hides names: scrolls to the game's card and focuses its Compare
+     box, or, when the filters hide the card, opens the game's Details with the filters as they are */
+  function goToGame(item) {
+    if (!current.includes(item)) {
+      openDetails(item, true, true);
+      return;
+    }
+    item.card.querySelector(".compare").focus({ preventScroll: true });
+    item.card.scrollIntoView({ block: "nearest", behavior: reducedMotion.matches ? "instant" : "smooth" });
+  }
   $("tray-items").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove]");
-    if (button) removeFromCompare(button.dataset.remove, "tray-items");
+    const remove = event.target.closest("[data-remove]");
+    const go = event.target.closest("[data-go]");
+    if (remove) removeFromCompare(remove.dataset.remove, "tray-items");
+    else if (go) goToGame(byId.get(go.dataset.go));
   });
   $("compare-table").addEventListener("click", (event) => {
     const button = event.target.closest("[data-remove]");
@@ -2228,12 +2442,12 @@
     ["Difficulty", (item) => `<span${difficultyClass(item.game)}>${difficultyHtml(item.game)}</span>`],
     ["Ages", (item) => `${item.game.ages}+`],
     ["Players", (item) => playersHtml(item.game)],
-    ["Time", (item) => esc(item.game.time)],
+    ["Time", (item) => timeHtml(item.game.time)],
     ["Price", (item) => priceText(item.game)],
     ["Themes", (item) => esc(item.game.themes.join(", "))],
     ["Reviewers liked", (item) => listHtml(item.game.liked)],
     ["Watch out for", (item) => listHtml(item.game.watchOut)],
-    ["Where to buy", (item) => storesHtml(item.game, true)],
+    ["Where to buy", (item) => storesHtml(item.game)],
   ];
 
   function renderCompareTable() {
@@ -2241,15 +2455,20 @@
     $("c-title").textContent = `Comparing ${plural(chosen.length, "game")}`;
     $("compare-table").style.setProperty("--games", chosen.length);
     $("compare-table").innerHTML = `
+      <caption class="visually-hidden">Games compared side by side</caption>
       <colgroup><col class="label-col">${chosen.map(() => `<col class="game-col">`).join("")}</colgroup>
       <thead><tr>
         <th scope="col"><span class="visually-hidden">Detail</span></th>
-        ${chosen.map(({ game }) => `<th scope="col"><div class="compare-head">${thumb(game)}<span class="compare-name">${esc(game.name)}</span>${removeButton(game)}</div></th>`).join("")}
+        ${chosen.map(({ game }) => `<th scope="col"><div class="compare-head">${thumb(game)}<span class="compare-name">${esc(game.name)}</span></div></th>`).join("")}
       </tr></thead>
-      <tbody>${COMPARE_ROWS.map(([label, cell]) => `<tr><th scope="row">${label}</th>${chosen.map((item) => `<td>${cell(item)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+      <tbody>
+        <tr class="compare-remove"><th scope="row"><span class="visually-hidden">Remove</span></th>${chosen.map(({ game }) => `<td>${removeButton(game)}</td>`).join("")}</tr>
+        ${COMPARE_ROWS.map(([label, cell]) => `<tr><th scope="row">${label}</th>${chosen.map((item) => `<td>${cell(item)}</td>`).join("")}</tr>`).join("")}
+      </tbody>`;
   }
 
   openCompare.addEventListener("click", () => {
+    if (openCompare.getAttribute("aria-disabled") === "true") return;
     renderCompareTable();
     openDialog(compareDialog);
   });
@@ -2263,20 +2482,20 @@
   let pushedEntry = false;
 
   function ratingsHtml(game) {
-    const boxes = [];
+    const rows = [];
     /* BoardGameGeek first: it is the score on the card */
-    if (game.bggText) {
-      boxes.push(["BoardGameGeek", game.bggText, "out of 10", game.bggCount ? `from ${plural(game.bggCount, "rating")}` : ""]);
+    if (game.bggAverage != null) {
+      rows.push(["BoardGameGeek", scoreText(game.bggAverage), "out of 10", game.bggCount ? `from ${plural(game.bggCount, "rating")}` : ""]);
     }
     if (game.shopperRating) {
-      boxes.push(["Shopper rating", game.shopperRating, "out of 5", game.shopperCount ? `from ${game.shopperCount} shoppers` : ""]);
+      rows.push(["Shopper rating", game.shopperRating, "out of 5", game.shopperCount ? `from ${game.shopperCount} shoppers` : ""]);
     }
-    if (game.criticText) boxes.push(["Critic score", game.criticText, "out of 10", ""]);
-    if (!boxes.length) return "";
+    if (game.criticText) rows.push(["Critic score", game.criticText, "out of 10", ""]);
+    if (!rows.length) return "";
     return `
-      <section class="section section--ratings" aria-labelledby="d-ratings">
-        <h3 class="section-title" id="d-ratings">Ratings</h3>
-        <dl class="scores">${boxes.map(([label, value, scale, count]) => `
+      <section class="section section--ratings">
+        <h3 class="section-title">Ratings</h3>
+        <dl class="scores">${rows.map(([label, value, scale, count]) => `
           <div class="score"><dt>${label}</dt><dd><span class="score-value">${esc(value)}</span> <span class="score-scale">${scale}${count ? "," : ""}</span>${count ? ` <span class="score-count">${esc(count)}</span>` : ""}</dd></div>`).join("")}
         </dl>
       </section>`;
@@ -2289,43 +2508,47 @@
       <div class="details-head">
         ${game.image ? `<div class="details-stage">${photoHtml(game.image, DETAILS_SIZES)}</div>` : ""}
         <div class="details-opening">
-          <p class="card-meta">${scoreBadge(item)}<span class="card-type">${esc(game.type)}</span><span class="card-year">${game.year}</span></p>
+          <p class="card-meta">${scoreBadge(item)}${SPOKEN_COMMA}<span class="card-type">${esc(game.type)}</span>${SPOKEN_COMMA}<span class="card-year">${game.year}</span></p>
           <p class="bottom-line">${esc(game.bottomLine)}</p>
           ${factsHtml(game)}
         </div>
       </div>
       <div class="section--story">
-        <section class="section" aria-labelledby="d-story">
-          <h3 class="section-title" id="d-story">Publisher description</h3>
+        <section class="section">
+          <h3 class="section-title">Publisher description</h3>
           ${proseHtml(game.description)}
         </section>
         ${game.notes ? `
-        <section class="section" aria-labelledby="d-notes">
-          <h3 class="section-title" id="d-notes">Additional notes</h3>
+        <section class="section">
+          <h3 class="section-title">Additional notes</h3>
           ${proseHtml(game.notes)}
         </section>` : ""}
-        <ul class="tags" aria-label="Tags">${[...game.themes, ...(game.replayable ? ["Replayable"] : [])].map((tag) => `<li class="tag">${esc(tag)}</li>`).join("")}</ul>
+        <div class="themes">
+          <p class="section-title" id="d-themes">Themes</p>
+          <ul class="tags" aria-labelledby="d-themes">${game.themes.map((theme) => `<li class="tag">${esc(theme)}</li>`).join("")}</ul>
+        </div>
       </div>
-      <div class="proscons">
+      <div class="details-aside">
         ${ratingsHtml(game)}
-        <section class="section pro" aria-labelledby="d-pros">
-          <h3 class="section-title" id="d-pros">Reviewers liked</h3>
+        <section class="section">
+          <h3 class="section-title">Reviewers liked</h3>
           <ul>${game.liked.map((text) => `<li>${icon("i-check")}${esc(text)}</li>`).join("")}</ul>
         </section>
         ${game.watchOut.length ? `
-        <section class="section con" aria-labelledby="d-cons">
-          <h3 class="section-title" id="d-cons">Watch out for</h3>
+        <section class="section">
+          <h3 class="section-title">Watch out for</h3>
           <ul>${game.watchOut.map((text) => `<li>${icon("i-triangle")}${esc(text)}</li>`).join("")}</ul>
         </section>` : ""}
       </div>
       <div class="bar bar--foot details-actions">
-        <section class="section section--buy" aria-labelledby="d-buy">
-          <h3 class="section-title" id="d-buy">Where to buy</h3>
-          ${storesHtml(game, false)}
+        <section class="section section--buy">
+          <h3 class="section-title">Where to buy</h3>
+          ${storesHtml(game)}
         </section>
         <div class="details-more">
-          ${storeLink({ name: "See it on BoardGameGeek", url: game.bggUrl }, game, false)}
+          ${storeLink({ name: "See it on BoardGameGeek", url: game.bggUrl }, game)}
           <label class="option compare-check"><input class="compare" type="checkbox" id="d-compare"><span class="option-label">Compare</span></label>
+          <span id="d-limit" hidden>${LIMIT_NOTE}</span>
         </div>
       </div>`;
     dMain.querySelectorAll(".photo").forEach(watchPhoto);
@@ -2333,9 +2556,9 @@
     syncChecks();
   }
 
-  /* The dialog opens on the game in the current list; a game the filters hide clears them first */
-  function openDetails(item, push) {
-    if (!current.includes(item)) {
+  /* The dialog opens on the game; when the filters hide it they are cleared first, unless `keepFilters` is set */
+  function openDetails(item, push, keepFilters = false) {
+    if (!keepFilters && !current.includes(item)) {
       resetFilters();
       update();
     }
@@ -2359,7 +2582,13 @@
   details.addEventListener("close", () => {
     const item = detailsItem;
     detailsItem = null;
-    const returnFocus = () => item?.card.querySelector(".card-link").focus();
+    /* Back to the card's name; with the card filtered out, to the game's tray photo, or else to the games */
+    const returnFocus = () => {
+      if (!item) return;
+      const link = item.card.querySelector(".card-link");
+      const photo = tray.hidden ? null : $("tray-items").querySelector(`[data-go="${item.id}"]`);
+      (link.isConnected ? link : photo ?? gamesArea).focus();
+    };
     if (byId.has(decodeURIComponent(location.hash.slice(1)))) {
       /* Going back to an earlier fragment such as #games moves focus to its target, so focus returns again once it lands */
       if (pushedEntry) {

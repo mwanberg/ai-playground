@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EXIT Games Explorer</title>
 <meta name="description" content="Narrow the 46 EXIT games by difficulty, rating, theme and age, read each game’s details, and compare up to four side by side.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+<!-- Fonts are fetched in anonymous CORS mode, so the preload has to match it even on the same site -->
+<link rel="preload" href="fonts/hanken-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <script>
   /* Applies a theme saved by the footer's switch before the first paint, so the
      page never flashes the other theme. The key is shared with the gallery. */
@@ -19,10 +18,60 @@
 <style>
 @layer tokens, base, layout, components, type;
 
+/* Hanken Grotesk, variable in weight, Latin subset. Copyright 2021 The Hanken Grotesk Project Authors,
+   under the SIL Open Font License 1.1. Only the regular is preloaded: the italic sets one quote, and
+   the browser fetches it when that quote is drawn. */
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("fonts/hanken-grotesk-latin-wght-italic.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: italic;
+  font-display: swap;
+}
+/* Arial resized to Hanken Grotesk's widths and line metrics, so text barely moves when the web font
+   swaps in. Each size-adjust is specific to Arial against this font. Since size-adjust scales the
+   overrides too, ascent-override is Hanken Grotesk's ascent (1em) over size-adjust and descent-override
+   its descent (0.3em) over size-adjust. Arial has no light weights, so the light group uses Arial's
+   regular at a smaller size. Without Arial the family is skipped. */
+@font-face {
+  font-family: "Hanken Grotesk fallback";
+  src: local("Arial");
+  font-weight: 200 300;
+  size-adjust: 97.82%;
+  ascent-override: 102.23%;
+  descent-override: 30.67%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Hanken Grotesk fallback";
+  src: local("Arial");
+  font-weight: 400 500;
+  size-adjust: 100.38%;
+  ascent-override: 99.62%;
+  descent-override: 29.89%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Hanken Grotesk fallback";
+  src: local("Arial Bold");
+  font-weight: 600 800;
+  size-adjust: 94.97%;
+  ascent-override: 105.30%;
+  descent-override: 31.59%;
+  line-gap-override: 0%;
+}
+
 /* ---------- Tokens ---------- */
 @layer tokens {
   :root {
-    --font: "Hanken Grotesk", system-ui, sans-serif;
+    --font: "Hanken Grotesk", "Hanken Grotesk fallback", system-ui, sans-serif;
     --weight-display: 200;
     --weight-light: 300;
     --weight-regular: 400;
@@ -1933,8 +1982,9 @@
     if (cards.length) grid.replaceChildren(...cards);
     else grid.replaceChildren(noMatch());
     /* A shorter page that can no longer reach the old scroll position would strand the reader at its
-       bottom; the results' top comes into view instead */
-    const stranded = scrolled > document.documentElement.scrollHeight - innerHeight;
+       bottom; the results' top comes into view instead. At the top the reader cannot be stranded, so
+       the page height is not read there, since reading it makes the browser lay out every card. */
+    const stranded = scrolled > 0 && scrolled > document.documentElement.scrollHeight - innerHeight;
     if (stranded && gamesArea.getBoundingClientRect().top < 0) glideToResults();
   }
 
@@ -2630,10 +2680,11 @@
   }
   themeSwitch.hidden = false;
 
+  /* The changes come before the measurements, so the browser lays out the cards once at startup */
   placeControls();
   update();
-  loadFirstRow();
   renderCompare();
+  loadFirstRow();
   fitPanel();
   openFromHash();
 })();

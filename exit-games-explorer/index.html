@@ -707,7 +707,7 @@
   .card:hover:not(:has(.compare-check:hover)) .card-link { color: var(--color-accent-strong); text-decoration-thickness: 2.5px; }
 
   /* Rating badge: the BoardGameGeek score on the attention tint with an orange star; grey when ratings are few.
-     Three weights of attention: the score, then the scale muted, then the source as a label. */
+     Two weights of attention: the score, then the source as a label. */
   .rating, .rating > [aria-hidden] {
     display: inline-flex; white-space: nowrap; align-items: center; gap: var(--gap-hair);
   }
@@ -715,11 +715,9 @@
     padding-inline: var(--gap-tight); border-radius: var(--radius-pill);
     background: var(--color-meaning-soft); color: var(--color-ink);
   }
-  .rating-scale { color: var(--color-ink-muted); }
   .rating svg { width: 0.9em; height: 0.9em; fill: var(--color-meaning-strong); }
+  /* BGG sits a little apart from the score; the count's dot already follows BGG's trailing letter-spacing, so it takes the gap alone */
   .rating-source { margin-inline-start: var(--gap-hair); }
-  /* The count's dot already follows BGG's trailing letter-spacing; a margin too would leave more space before the dot than after */
-  .rating-source + .rating-source { margin-inline-start: 0; }
   .rating--muted { background: var(--color-bg); color: var(--color-ink-muted); }
   .rating--muted svg { fill: currentColor; }
 
@@ -767,7 +765,7 @@
   /* Difficulty: five dots, like the LEVEL scale printed on each box; off dots are rings, so fill and color both tell.
      --pip-on is the fill, orange unless a disabled option turns it the disabled grey. --pip-inside is the
      surface the dots sit on, which shows inside a half dot's empty half. */
-  .level { display: flex; align-items: center; gap: var(--gap-tight); white-space: nowrap; }
+  .level { display: flex; align-items: center; }
   .pips { display: inline-flex; gap: var(--gap-hair); --pip-on: var(--color-meaning); --pip-inside: var(--color-surface); }
   .filters-panel .pips { --pip-inside: var(--color-panel); }
   .pips i { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1.5px solid var(--color-control-line); background: transparent; }
@@ -1049,14 +1047,18 @@
 
   @media (width <= 44rem) {
     .details { inline-size: 100%; max-inline-size: 100%; max-block-size: 100dvh; block-size: 100dvh; border-radius: 0; }
-    .details-main { grid-template-columns: minmax(0, 1fr); }
-    /* The photo is stacked above the opening, full width on a 3:2 stage like the card's */
-    .details-stage { aspect-ratio: 3 / 2; }
-    .details-stage, .details-head:has(.details-stage) .details-opening, .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
+    /* The title bar's space below matches its space above, with content scrolled under it or not */
+    .details:not(.details--compare) .bar--head { padding-block-end: var(--gap-group); }
+    .details-main { grid-template-columns: minmax(0, 1fr); padding-block-start: 0; }
+    /* The photo takes two fifths of the width, the opening the rest beside it */
+    .details-head:has(.details-stage) { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: var(--gutter); }
+    .details-stage { grid-column: 1; }
+    .details-head:has(.details-stage) .details-opening { grid-column: 2; }
+    .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
     .section--story, .details-aside { grid-column: 1 / -1; }
-    /* Phones: the actions are not sticky; they end the content, stacked */
-    .details-actions { position: static; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); margin: 0; padding: 0; }
+    /* Phones: the actions are not sticky; they end the content, stacked, a section's gap further down than the sections above */
+    .details-actions { position: static; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); margin: var(--gap-section) 0 0; padding: 0; }
     .details-actions::before { display: none; }
     .section--buy, .details-more { grid-column: 1 / -1; }
     .details-more { padding-block-start: 0; }
@@ -1184,6 +1186,10 @@
     background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-dialog);
   }
   .sheet[open] { display: flex; flex-direction: column; }
+  /* A dialog pulled down and let go short of closing slides back up; the page script sets data-pull while it does */
+  @media (prefers-reduced-motion: no-preference) {
+    :is(.details, .sheet)[data-pull="return"] { transition: translate var(--motion-base) var(--motion-ease); }
+  }
   /* Forced colors drop the shadow and replace the scrim, so Details, Compare and the sheet take a border */
   @media (forced-colors: active) {
     .details, .sheet { border: 1px solid CanvasText; }
@@ -1339,11 +1345,11 @@
 
   /* Meta, strong: the rating badge, the game type, the tags on the art, the compare table's headers, quick picks */
   .rating, .card-type, .card-flag, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
-  /* Meta, regular: the year, the rating's scale, a time's unit of play, counts, the footer, the limit note's toggletip */
-  .card-year, .rating-scale, .time-unit, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .toggletip { font: var(--weight-regular) var(--text-meta) var(--font); }
+  /* Meta, regular: the year, a time's unit of play, counts, the footer, the limit note's toggletip */
+  .card-year, .time-unit, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .toggletip { font: var(--weight-regular) var(--text-meta) var(--font); }
 
   /* Label: uppercase labels everywhere, muted. The one role that sets a color, so every label matches. */
-  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .theme-label, .rating-scale + .rating-source, .compare-table tbody th {
+  .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .theme-label, .rating-source, .compare-table tbody th {
     font: var(--weight-semibold) var(--text-label) var(--font);
     text-transform: uppercase; letter-spacing: var(--track-label);
     color: var(--color-ink-muted);
@@ -1544,6 +1550,13 @@
   const dMain = $("d-main");
   const dStatus = $("d-status");
 
+  /* Focus the page moves draws its ring after a key press and not after a touch or click, so a tap on Close
+     returns focus to the card's name without a ring; before either kind of input, the browser decides */
+  let lastInput = null;
+  addEventListener("keydown", () => { lastInput = "keyboard"; }, true);
+  addEventListener("pointerdown", () => { lastInput = "pointer"; }, true);
+  const moveFocus = (element, options) => element.focus({ ...options, focusVisible: { keyboard: true, pointer: false }[lastInput] });
+
   /* ---------- Ratings ---------- */
   const MIN_RATINGS = 50;
   /* The BoardGameGeek average as the badge and the Ratings row show it */
@@ -1560,9 +1573,9 @@
     const { score, few, game } = item;
     if (score == null) return `<span class="rating rating--muted">${icon("i-ring")}No rating</span>`;
     const shown = scoreText(score);
-    const count = few ? `<span class="rating-source">· ${plural(game.bggCount, "rating")}</span>` : "";
+    const count = few ? `<span class="rating-count">· ${plural(game.bggCount, "rating")}</span>` : "";
     const spoken = `BoardGameGeek rating ${shown} out of 10${few ? `, from only ${plural(game.bggCount, "rating")}` : ""}`;
-    return `<span class="rating${few ? " rating--muted" : ""}"><span aria-hidden="true">${icon("i-star")}${shown}<span class="rating-scale">/ 10</span><span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
+    return `<span class="rating${few ? " rating--muted" : ""}"><span aria-hidden="true">${icon("i-star")}${shown}<span class="rating-source">BGG</span>${count}</span><span class="visually-hidden">${spoken}</span></span>`;
   }
 
   /* Description text as one string for search, subheadings included */
@@ -1682,15 +1695,14 @@
       return `<i class="${fill >= 1 ? "on" : fill > 0 ? "half" : ""}"></i>`;
     }).join("");
   }
-  /* Screen readers hear "level 4.5 out of 5"; the visible "4.5 / 5" is hidden from them */
+  /* The dots are hidden from screen readers, which hear "level 4.5 out of 5" instead */
   const difficultyHtml = (game) =>
     game.difficulty == null
       ? esc(game.difficultyLabel)
-      : `<span class="pips" aria-hidden="true">${pips(game.difficulty)}</span><span aria-hidden="true">${game.difficulty} / 5</span><span class="visually-hidden">level ${game.difficulty} out of 5</span>`;
+      : `<span class="pips" aria-hidden="true">${pips(game.difficulty)}</span><span class="visually-hidden">level ${game.difficulty} out of 5</span>`;
   /* A pause between adjacent spans of the meta line, so screen readers do not run their words together */
   const SPOKEN_COMMA = `<span class="visually-hidden">, </span>`;
   const difficultyClass = (game) => (game.difficulty == null ? "" : ' class="level"');
-  const playersHtml = (game) => `${esc(game.players)} players`;
   /* ---------- Box photos ---------- */
   /* Each `sizes` below gives the side of the photo's drawn square in each layout, so the browser picks a
      file by what is drawn. The photo sits contained in a box wider than itself, so the square is the
@@ -1704,9 +1716,9 @@
     columns === "3" ? "(width < 80rem) calc(16.67vw - 2.25rem)" : "(width < 80rem) calc(25vw - 2.375rem)",
     columns === "3" ? "11.0625rem" : "17.625rem",
   ].join(", ");
-  /* Details: full screen up to 44rem; wider, a photo of 3 of the dialog's 12 columns, which stops growing at 67rem,
-     where the dialog reaches its 64rem maximum */
-  const DETAILS_SIZES = "(width <= 40rem) calc(66.67vw - 1.33rem), (width <= 44rem) calc(66.67vw - 2rem), (width < 67rem) calc(25vw - 2.625rem), 14.125rem";
+  /* Details: full screen up to 44rem, with a photo of two fifths of the width less the insets and gutter; wider, a photo
+     of 3 of the dialog's 12 columns, which stops growing at 67rem, where the dialog reaches its 64rem maximum */
+  const DETAILS_SIZES = "(width <= 40rem) calc(40vw - 1.4rem), (width <= 44rem) calc(40vw - 1.8rem), (width < 67rem) calc(25vw - 2.625rem), 14.125rem";
   const THUMB_SIZES = "3rem";
 
   const photoAttrs = (image, sizes) =>
@@ -1744,7 +1756,7 @@
     <dl class="facts">
       <div class="fact fact--wide"><dt>Difficulty</dt><dd${difficultyClass(game)}>${difficultyHtml(game)}</dd></div>
       <div class="fact"><dt>Ages</dt><dd>${game.ages}+</dd></div>
-      <div class="fact"><dt>Players</dt><dd>${playersHtml(game)}</dd></div>
+      <div class="fact"><dt>Players</dt><dd>${esc(game.players)}</dd></div>
       <div class="fact"><dt>Time</dt><dd>${timeHtml(game.time)}</dd></div>
       <div class="fact"><dt>Price</dt><dd>${priceText(game)}</dd></div>
     </dl>`;
@@ -1962,7 +1974,7 @@
     /* Unchecking an option that gives no games under the other filters disables it; focus moves to a live option
        in its group, or to Search when the group has none, instead of dropping to the page */
     if (focused?.matches?.(".option input") && focused.disabled) {
-      (focused.closest("fieldset").querySelector("input:not(:disabled)") ?? searchInput).focus();
+      moveFocus(focused.closest("fieldset").querySelector("input:not(:disabled)") ?? searchInput);
     }
 
     const applied = appliedCount();
@@ -2052,7 +2064,7 @@
     box.querySelector("button").addEventListener("click", () => {
       resetFilters();
       update(true);
-      gamesArea.focus();
+      moveFocus(gamesArea);
     });
     return box;
   }
@@ -2184,8 +2196,9 @@
     transition.finished.then(done, done);
   }
 
-  function openDialog(dialog) {
-    if (!dialog.open) morphDialog(dialog, "open", originParts(dialog), dialogParts(dialog), () => dialog.showModal(), leadParts(dialog));
+  /* `afterOpen` runs once the dialog is shown, before the transition's new snapshot */
+  function openDialog(dialog, afterOpen) {
+    if (!dialog.open) morphDialog(dialog, "open", originParts(dialog), dialogParts(dialog), () => { dialog.showModal(); afterOpen?.(); }, leadParts(dialog));
   }
   function closeDialog(dialog) {
     if (dialog.open) morphDialog(dialog, "close", dialogParts(dialog), originParts(dialog), () => dialog.close());
@@ -2467,9 +2480,9 @@
     const remaining = compare.length ? removeButtons() : [];
     const next = remaining[Math.min(index, remaining.length - 1)];
     const box = byId.get(id).card.querySelector(".compare");
-    if (next) next.focus();
+    if (next) moveFocus(next);
     else if (compareDialog.open) closeDialog(compareDialog);
-    else (box.isConnected ? box : gamesArea).focus();
+    else moveFocus(box.isConnected ? box : gamesArea);
   }
   /* Handles a tray photo's press, where the tray hides names: scrolls to the game's card and focuses its Compare
      box, or, when the filters hide the card, opens the game's Details with the filters as they are */
@@ -2478,7 +2491,7 @@
       openDetails(item, true, true);
       return;
     }
-    item.card.querySelector(".compare").focus({ preventScroll: true });
+    moveFocus(item.card.querySelector(".compare"), { preventScroll: true });
     item.card.scrollIntoView({ block: "nearest", behavior: reducedMotion.matches ? "instant" : "smooth" });
   }
   $("tray-items").addEventListener("click", (event) => {
@@ -2497,7 +2510,7 @@
     ["Bottom line", (item) => `<span class="compare-verdict">${esc(item.game.bottomLine)}</span>`],
     ["Difficulty", (item) => `<span${difficultyClass(item.game)}>${difficultyHtml(item.game)}</span>`],
     ["Ages", (item) => `${item.game.ages}+`],
-    ["Players", (item) => playersHtml(item.game)],
+    ["Players", (item) => esc(item.game.players)],
     ["Time", (item) => timeHtml(item.game.time)],
     ["Price", (item) => priceText(item.game)],
     ["Themes", (item) => esc(item.game.themes.join(", "))],
@@ -2529,7 +2542,7 @@
     openDialog(compareDialog);
   });
   compareDialog.addEventListener("close", () => {
-    if (document.activeElement === document.body) (tray.hidden ? gamesArea : openCompare).focus();
+    if (document.activeElement === document.body) moveFocus(tray.hidden ? gamesArea : openCompare);
   });
   animateClosing(compareDialog);
 
@@ -2608,9 +2621,12 @@
         </div>
       </div>`;
     dMain.querySelectorAll(".photo").forEach(watchPhoto);
-    $("d-pane").scrollTop = 0;
+    toDetailsTop();
     syncChecks();
   }
+  /* A closed dialog is not laid out, so a scroll set then is lost and the browser restores the last one on opening;
+     Details opening from closed scrolls to the top again once shown */
+  const toDetailsTop = () => { $("d-pane").scrollTop = 0; };
 
   /* The dialog opens on the game; when the filters hide it they are cleared first, unless `keepFilters` is set */
   function openDetails(item, push, keepFilters = false) {
@@ -2621,7 +2637,7 @@
     detailsItem = item;
     renderDetails(item);
     if (!details.open) {
-      openDialog(details);
+      openDialog(details, toDetailsTop);
       if (push) {
         history.pushState(null, "", `#${item.id}`);
         pushedEntry = true;
@@ -2643,7 +2659,7 @@
       if (!item) return;
       const link = item.card.querySelector(".card-link");
       const photo = tray.hidden ? null : $("tray-items").querySelector(`[data-go="${item.id}"]`);
-      (link.isConnected ? link : photo ?? gamesArea).focus();
+      moveFocus(link.isConnected ? link : photo ?? gamesArea);
     };
     if (byId.has(decodeURIComponent(location.hash.slice(1)))) {
       /* Going back to an earlier fragment such as #games moves focus to its target, so focus returns again once it lands */
@@ -2657,6 +2673,67 @@
   });
   animateClosing(details);
   animateClosing(sheet);
+
+  /* ---------- Pull to close: a phone's full-screen Details, and the Filters sheet, follow a finger pulling them down ---------- */
+  /* A pull starts on a bar, or on the content while it is scrolled to the top, when the finger's first move is more
+     down than sideways. Let go past a quarter of the dialog's height, or with a quick flick, and it closes from where
+     it is; short of that it slides back. Touch events, since only they let the page take a gesture from the scroll. */
+  const PULL_CLOSE_SHARE = 0.25;
+  const FLICK_SPEED = 0.6; /* px per ms */
+  const FLICK_MIN = 48;
+  function pullToClose(dialog, pane, enabled) {
+    let gesture = null;
+    const release = () => {
+      dialog.style.translate = "";
+      delete dialog.dataset.pull;
+    };
+    dialog.addEventListener("touchstart", (event) => {
+      const touch = event.touches[0];
+      gesture = event.touches.length === 1 && enabled()
+        ? { x: touch.clientX, y: touch.clientY, atTop: !pane.contains(event.target) || pane.scrollTop <= 0, pulling: null, offset: 0, last: null, prev: null }
+        : null;
+    }, { passive: true });
+    dialog.addEventListener("touchmove", (event) => {
+      if (!gesture || gesture.pulling === false) return;
+      const touch = event.touches[0];
+      const dx = touch.clientX - gesture.x;
+      const dy = touch.clientY - gesture.y;
+      if (gesture.pulling === null) {
+        if (!dx && !dy) return;
+        gesture.pulling = gesture.atTop && dy > 0 && dy >= Math.abs(dx);
+        if (!gesture.pulling) return;
+        dialog.dataset.pull = "drag";
+      }
+      event.preventDefault();
+      gesture.offset = Math.max(0, dy);
+      gesture.prev = gesture.last;
+      gesture.last = { offset: gesture.offset, time: event.timeStamp };
+      dialog.style.translate = `0 ${gesture.offset}px`;
+    }, { passive: false });
+    const end = (event) => {
+      const done = gesture;
+      gesture = null;
+      if (!done?.pulling) return;
+      const { offset, last, prev } = done;
+      const speed = last && prev && last.time > prev.time ? (last.offset - prev.offset) / (last.time - prev.time) : 0;
+      const closes = event.type === "touchend" && (offset > dialog.offsetHeight * PULL_CLOSE_SHARE || (speed > FLICK_SPEED && offset > FLICK_MIN));
+      if (closes) closeDialog(dialog);
+      else if (offset && !reducedMotion.matches) {
+        dialog.dataset.pull = "return";
+        dialog.style.translate = "";
+      } else release();
+    };
+    dialog.addEventListener("touchend", end);
+    dialog.addEventListener("touchcancel", end);
+    dialog.addEventListener("transitionend", (event) => {
+      if (event.target === dialog && event.propertyName === "translate" && dialog.dataset.pull === "return") release();
+    });
+    dialog.addEventListener("close", release);
+  }
+  /* The stylesheet's breakpoint where Details fills the screen; the sheet opens only on narrow screens */
+  const fullScreenDetails = matchMedia("(width <= 44rem)");
+  pullToClose(details, $("d-pane"), () => fullScreenDetails.matches);
+  pullToClose(sheet, $("sheet-pane"), () => true);
 
   /* A game opened by an address change has no history entry the page pushed, so closing it does not go back */
   function openFromHash() {

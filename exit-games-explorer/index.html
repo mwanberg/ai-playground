@@ -18,6 +18,14 @@
 <style>
 @layer tokens, base, layout, components, type;
 
+/* A link's underline thickness, registered so a hover's change can be transitioned, which the thickness itself is not
+   in Chromium; links rest at the initial value. It does not inherit, so a change restyles only the link. */
+@property --underline {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0.75px;
+}
+
 /* Hanken Grotesk, variable in weight, Latin subset. Copyright 2021 The Hanken Grotesk Project Authors,
    under the SIL Open Font License 1.1. Only the regular is preloaded: the italic sets one quote, and
    the browser fetches it when that quote is drawn. */
@@ -180,11 +188,14 @@
        stronger teal sits too near the white labels to read as a change */
     --color-option-hover: light-dark(#00485E, #7CCBDB);
     /* Attention: the orange of the kids' age tag and the covers' warm light, for facts worth noticing
-       (difficulty, rating, tags), as marks and tints, never as text */
+       (difficulty, rating, tags), as marks and tints, and as text only in the BGG label's --color-meaning-ink */
     --color-meaning: light-dark(#D2692E, #E89048);
     /* The same orange, deeper, for the star on the rating badge's tint: the 3:1 non-text floor on the tint */
     --color-meaning-strong: light-dark(#A9531F, #F0A866);
     --color-meaning-soft: light-dark(#FBE3CC, #3D2716);
+    /* The BGG label on the badge's tint, at 7:1 there: a burnt orange in light; in dark a faded warm white, as dim as the
+       other labels and well under the score's white */
+    --color-meaning-ink: light-dark(#713612, #CCBAA9);
     /* The card light: a shadow in the box art's deep blue in light, a neon a step brighter and more saturated
        than the logo's cyan in dark. Its core and the edge's bright spot are layered over these colors, so their
        values are what they add. Dark mode alone draws the hovered card's edge. */
@@ -304,6 +315,11 @@
     grid-template-columns: repeat(auto-fill, minmax(min(max(var(--card-min), (100% - var(--gutter)) / 2), 100%), 1fr));
     gap: var(--gutter);
   }
+  /* Phones, below where two full cards fit: two narrow cards a row's gap apart, since one card to a row is too large
+     to scan or compare */
+  @media (width < 42.5rem) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-row); }
+  }
   .grid[data-columns="3"] { --columns: 3; }
   /* Wide screens: two columns, and from 75rem the Columns switch sets the count */
   @media (width > 64rem) {
@@ -349,9 +365,9 @@
      rest in the stronger teal, as the other teal text on the ground does, and hover by thickening the underline */
   .footer-link {
     color: var(--color-accent-strong);
-    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
+    text-decoration: underline; text-decoration-thickness: var(--underline); text-underline-offset: 0.2em;
   }
-  .footer-link:hover { text-decoration-thickness: 2px; }
+  .footer-link:hover { --underline: 2px; }
   .footer-link svg { width: 0.65em; height: 0.65em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: 0.05em; }
 }
 
@@ -683,14 +699,15 @@
     background: var(--color-meaning-soft); color: var(--color-ink);
     padding: var(--gap-hair) var(--gap-tight); border-radius: var(--radius-s);
   }
+  /* The verdict's row takes a taller card's slack, so the facts and the foot row end level with the card's bottom */
   .card-body {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr auto auto auto;
     column-gap: var(--gap-stack); row-gap: 0;
     padding: var(--gap-row) var(--inset-card) var(--inset-card);
   }
   .card-head, .verdict { grid-column: 1 / -1; }
-  .card-head { display: grid; gap: var(--gap-row); margin-block-end: var(--gap-group); }
-  .verdict { margin-block-end: var(--gap-group); text-wrap: pretty; }
+  .card-head { display: grid; gap: var(--gap-stack); margin-block-end: var(--gap-group); }
+  .verdict { align-self: start; margin-block-end: calc(2 * var(--gap-group)); text-wrap: pretty; }
   /* The meta line: the rating at the left, the type and year together at the right; on a narrow
      card the pair drops to its own line, still right-aligned */
   .card-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
@@ -701,10 +718,10 @@
   }
   .card-year { color: var(--color-ink-muted); }
   /* The name's corners match a button's, so its focus ring takes the same rounded shape */
-  .card-link { border-radius: var(--radius-m); color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 0.16em; }
+  .card-link { border-radius: var(--radius-m); color: var(--color-accent); text-decoration: underline; text-decoration-thickness: var(--underline); text-underline-offset: 0.16em; }
   /* The name is the link, so it shows it. The whole card except its Compare row opens Details,
      so hovering anywhere but that row gives the name its hover look. */
-  .card:hover:not(:has(.compare-check:hover)) .card-link { color: var(--color-accent-strong); text-decoration-thickness: 2.5px; }
+  .card:hover:not(:has(.compare-check:hover)) .card-link { color: var(--color-accent-strong); --underline: 2.5px; }
 
   /* Rating badge: the BoardGameGeek score on the attention tint with an orange star; grey when ratings are few.
      Two weights of attention: the score, then the source as a label. */
@@ -730,6 +747,8 @@
   /* The foot row: Difficulty and Compare share one baseline row */
   .card .fact--wide { order: 2; grid-column: 1; grid-row: 5; align-self: end; margin: var(--gap-tight) 0 0; }
   .card .fact--wide dd { display: flex; align-items: center; min-block-size: var(--target-row); }
+  /* The dots sit on the Compare box's bottom edge: the box is 1.125rem, centered on the same row */
+  .card .fact--wide dd.level { align-items: flex-end; padding-block-end: calc((var(--target-row) - 1.125rem) / 2); }
   /* Compare is a full-size target, since a miss on a card opens Details. Negative margins give the
      extra height back, so the target grows into the space around its row and nothing moves. */
   .compare-check {
@@ -761,6 +780,40 @@
   }
   /* On the options' hover tint the label takes the hover color links use, which holds the text floor there */
   .compare-check:hover .option-label { color: var(--color-accent-strong); }
+
+  /* Phones, two cards across: a tighter inset and gaps, the type and year on a line of their own that can wrap, and
+     Compare under Difficulty on a row of its own, from its start, with the limit note opening from there and kept
+     inside the card. The grid's sixth row holds Compare. */
+  @media (width < 42.5rem) {
+    .card { --inset-card: var(--space-3); }
+    .card-body { column-gap: var(--gap-tight); grid-template-rows: auto 1fr auto auto auto auto; }
+    .card-head { gap: var(--gap-row); margin-block-end: var(--gap-row); }
+    .verdict { margin-block-end: calc(2 * var(--gap-row)); }
+    .card-kind { flex-basis: 100%; flex-wrap: wrap; row-gap: 0; margin-inline-start: 0; white-space: normal; }
+    .card .fact { margin-block-end: var(--gap-tight); }
+    .card .fact--wide { grid-column: 1 / -1; }
+    .card .compare-check {
+      grid-column: 1 / -1; grid-row: 6; justify-self: start;
+      margin: calc(var(--gap-tight) - var(--reach)) 0 calc(-1 * var(--reach)) calc(-1 * var(--gap-tight));
+    }
+    .card .toggletip { inset-inline: 0 auto; max-inline-size: calc(100cqi - 2 * var(--inset-card)); }
+    .card .toggletip::after { inset-inline: 0.75rem auto; }
+    /* The widest badge with its count is 164px, so a card under 188px shows the score alone; screen readers still hear the count */
+    @container card (inline-size < 188px) {
+      .card .rating-count { display: none; }
+    }
+    /* A card of 192px or more (two across from about a 428px window) has room for the dots, or a level's word, and
+       Compare a size down at least 8px apart: both share the foot row, at its two ends, as on wider screens */
+    @container card (inline-size >= 192px) {
+      .card .fact--wide { justify-self: start; margin-block-end: 0; }
+      .card .compare-check {
+        grid-row: 5; justify-self: end;
+        margin: calc(var(--gap-tight) - var(--reach)) calc(-1 * var(--gap-tight)) calc(-1 * var(--reach)) 0;
+      }
+      .card .toggletip { inset-inline: auto 0; }
+      .card .toggletip::after { inset-inline: auto 1.75rem; }
+    }
+  }
 
   /* Difficulty: five dots, like the LEVEL scale printed on each box; off dots are rings, so fill and color both tell.
      --pip-on is the fill, orange unless a disabled option turns it the disabled grey. --pip-inside is the
@@ -1040,9 +1093,9 @@
     --reach: calc((var(--target-row) - 1lh) / 2);
     padding-block: var(--reach); margin-block: calc(-1 * var(--reach));
     color: var(--color-accent);
-    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
+    text-decoration: underline; text-decoration-thickness: var(--underline); text-underline-offset: 0.2em;
   }
-  .store:hover { color: var(--color-accent-strong); text-decoration-thickness: 2px; }
+  .store:hover { color: var(--color-accent-strong); --underline: 2px; }
   .store svg { width: 0.65em; height: 0.65em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: 0.05em; }
 
   @media (width <= 44rem) {
@@ -1050,10 +1103,14 @@
     /* The title bar's space below matches its space above, with content scrolled under it or not */
     .details:not(.details--compare) .bar--head { padding-block-end: var(--gap-group); }
     .details-main { grid-template-columns: minmax(0, 1fr); padding-block-start: 0; }
-    /* The photo takes two fifths of the width, the opening the rest beside it */
-    .details-head:has(.details-stage) { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: var(--gutter); }
-    .details-stage { grid-column: 1; }
-    .details-head:has(.details-stage) .details-opening { grid-column: 2; }
+    /* The photo takes two fifths of the width, with the meta line and deck beside it and the facts in a row beneath
+       both; the deck's row takes the slack when the photo is the taller */
+    .details-head:has(.details-stage) { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto 1fr auto; column-gap: var(--gutter); }
+    .details-head:has(.details-stage) .details-opening { display: contents; }
+    .details-stage { grid-column: 1; grid-row: 1 / span 2; }
+    .details-head:has(.details-stage) .card-meta { grid-column: 2; grid-row: 1; }
+    .details-head:has(.details-stage) .bottom-line { grid-column: 2; grid-row: 2; align-self: start; }
+    .details-head:has(.details-stage) .facts { grid-column: 1 / -1; grid-row: 3; }
     .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
     .section--story, .details-aside { grid-column: 1 / -1; }
@@ -1236,9 +1293,13 @@
         color var(--motion-quick) var(--motion-ease), outline-offset var(--motion-quick) var(--motion-ease);
     }
     /* These hover color changes run on the buttons' timing: the options' tint, the Columns switch,
-       the name and store links' and Compare label's color, a quick pick's count, and Sort */
-    .option, .card-link, .store, .compare-check .option-label, .pick-count, select.field, .select-wrap {
+       the Compare label's color, a quick pick's count, and Sort */
+    .option, .compare-check .option-label, .pick-count, select.field, .select-wrap {
       transition: background-color var(--motion-quick) var(--motion-ease), color var(--motion-quick) var(--motion-ease);
+    }
+    /* Links change color and thicken their underline together, on the same timing */
+    .card-link, .store, .footer-link {
+      transition: color var(--motion-quick) var(--motion-ease), --underline var(--motion-quick) var(--motion-ease);
     }
   }
   @media (forced-colors: active) {
@@ -1330,6 +1391,16 @@
     .grid[data-columns="3"] .card-title { font: var(--weight-semibold) var(--text-deck) var(--font); }
     .grid[data-columns="3"] .verdict { font: var(--weight-light) var(--text-body) var(--font); }
   }
+  /* Two cards across on phones: the name a step down, the bottom line and fact values at the meta size, and
+     Compare at the meta size where it shares the foot row with Difficulty */
+  @media (width < 42.5rem) {
+    .card-title { font: var(--weight-semibold) var(--text-deck) var(--font); }
+    .verdict { font: var(--weight-light) var(--text-meta) var(--font); }
+    .card .fact dd { font: var(--weight-semibold) var(--text-meta) var(--font); }
+    @container card (inline-size >= 192px) {
+      .card .compare-check .option-label { font: var(--weight-semibold) var(--text-meta) var(--font); }
+    }
+  }
 
   /* Body: running text, lists, filter options, the compare table's cells */
   .story, .details-aside li, .option-label, .compare-table td { font: var(--weight-regular) var(--text-body) var(--font); }
@@ -1348,12 +1419,14 @@
   /* Meta, regular: the year, a time's unit of play, counts, the footer, the limit note's toggletip */
   .card-year, .time-unit, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .toggletip { font: var(--weight-regular) var(--text-meta) var(--font); }
 
-  /* Label: uppercase labels everywhere, muted. The one role that sets a color, so every label matches. */
+  /* Label: uppercase labels everywhere, muted. The one role that sets a color, so every label matches; the one
+     exception is BGG on a full rating badge, in a warm tone that sits with the tint, while a muted badge keeps the grey. */
   .fact dt, .score dt, .section-title, .filter-group legend, .columns legend, .sort-label, .lede-source, .theme-label, .rating-source, .compare-table tbody th {
     font: var(--weight-semibold) var(--text-label) var(--font);
     text-transform: uppercase; letter-spacing: var(--track-label);
     color: var(--color-ink-muted);
   }
+  .rating:not(.rating--muted) .rating-source { color: var(--color-meaning-ink); }
 
   /* Tabular figures wherever numbers sit in columns or change in place. Last in the layer, since the font
      shorthand above resets them on every element it styles; the second selector matches the descendants of
@@ -1707,10 +1780,11 @@
   /* Each `sizes` below gives the side of the photo's drawn square in each layout, so the browser picks a
      file by what is drawn. The photo sits contained in a box wider than itself, so the square is the
      box's height: two thirds of the card's width less the stage's 1rem of room. The breakpoints are the
-     stylesheet's; 42.5rem is where two cards fit (2 * 19rem + 1.5rem gutter + 2 * 1.5rem inset). */
+     stylesheet's; 42.5rem is where two full cards fit (2 * 19rem + 1.5rem gutter + 2 * 1.5rem inset), and below it
+     two narrow cards share the width with a 0.75rem gap, inside a 1rem inset up to 40rem and 1.5rem above. */
   const cardSizes = (columns) => [
-    "(width <= 40rem) calc(66.67vw - 2.33rem)",
-    "(width < 42.5rem) calc(66.67vw - 3rem)",
+    "(width <= 40rem) calc(33.33vw - 1.92rem)",
+    "(width < 42.5rem) calc(33.33vw - 2.25rem)",
     "(width <= 64rem) calc(33.33vw - 2.5rem)",
     "(width <= 75rem) calc(22.22vw - 2.33rem)",
     columns === "3" ? "(width < 80rem) calc(16.67vw - 2.25rem)" : "(width < 80rem) calc(25vw - 2.375rem)",
@@ -2762,6 +2836,30 @@
     });
   }
   themeSwitch.hidden = false;
+
+  /* ---------- Details photos ahead of time ---------- */
+  /* Once the page has loaded and the browser is idle, each game's Details photo is fetched in the background, one at
+     a time at low priority, in the grid's order, so Details opens on a photo already downloaded. Each takes Details'
+     srcset and sizes, so the browser picks the file Details will ask for. A reader saving data is spared it. */
+  function preloadDetailsPhotos() {
+    if (navigator.connection?.saveData) return;
+    const queue = [...new Set([...current, ...items])].filter((item) => item.game.image);
+    const next = () => {
+      const image = queue.shift()?.game.image;
+      if (!image) return;
+      const photo = new Image();
+      photo.fetchPriority = "low";
+      photo.addEventListener("load", next, { once: true });
+      photo.addEventListener("error", next, { once: true });
+      photo.sizes = DETAILS_SIZES;
+      photo.srcset = image.srcset;
+      photo.src = image.src;
+    };
+    next();
+  }
+  const whenIdle = (task) => ("requestIdleCallback" in window ? requestIdleCallback(task) : setTimeout(task, 0));
+  if (document.readyState === "complete") whenIdle(preloadDetailsPhotos);
+  else addEventListener("load", () => whenIdle(preloadDetailsPhotos), { once: true });
 
   /* The changes come before the measurements, so the browser lays out the cards once at startup */
   placeControls();

@@ -188,7 +188,7 @@
        stronger teal sits too near the white labels to read as a change */
     --color-option-hover: light-dark(#00485E, #7CCBDB);
     /* Attention: the orange of the kids' age tag and the covers' warm light, for facts worth noticing
-       (difficulty, rating, tags), as marks and tints, and as text only in the BGG label's --color-meaning-ink */
+       (difficulty, rating), as marks and tints, and as text only in the BGG label's --color-meaning-ink */
     --color-meaning: light-dark(#D2692E, #E89048);
     /* The same orange, deeper, for the star on the rating badge's tint: the 3:1 non-text floor on the tint */
     --color-meaning-strong: light-dark(#A9531F, #F0A866);
@@ -693,11 +693,6 @@
   .stage-name {
     position: absolute; inset: 0; display: grid; place-items: center;
     padding: var(--inset-card); text-align: center;
-  }
-  .card-flag {
-    position: absolute; inset-block-start: var(--gap-tight); inset-inline-start: var(--gap-tight);
-    background: var(--color-meaning-soft); color: var(--color-ink);
-    padding: var(--gap-hair) var(--gap-tight); border-radius: var(--radius-s);
   }
   /* The verdict's row takes a taller card's slack, so the facts and the foot row end level with the card's bottom */
   .card-body {
@@ -1251,14 +1246,10 @@
   @media (forced-colors: active) {
     .details, .sheet { border: 1px solid CanvasText; }
   }
-  /* Clear all filters sits centered on its row; Show n games fills the row below */
+  /* Clear all filters and Show n games side by side, Show filling the rest of the row; on a window too narrow for
+     both, Show wraps to a row of its own and Clear sits centered above it */
   .sheet .bar--foot { flex-wrap: wrap; justify-content: center; }
-  .sheet .bar--foot .btn--primary { flex: 1 1 100%; }
-  /* Short windows: both on one row, so the filters keep room to scroll */
-  @media (height <= 30rem) {
-    .sheet .bar--foot { flex-wrap: nowrap; }
-    .sheet .bar--foot .btn--primary { flex: 1 1 auto; }
-  }
+  .sheet .bar--foot .btn--primary { flex: 1 1 auto; }
 
   /* Buttons: white blocks with clickable-color text that fill on hover; the main action is filled.
      Inside a white block a hairline marks the edge. Focus draws a ring that eases outward. */
@@ -1414,8 +1405,8 @@
   /* The dot between themes stays at the regular weight beside the semibold names */
   .tag + .tag::before { font-weight: var(--weight-regular); }
 
-  /* Meta, strong: the rating badge, the game type, the tags on the art, the compare table's headers, quick picks */
-  .rating, .card-type, .card-flag, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
+  /* Meta, strong: the rating badge, the game type, the compare table's headers, quick picks */
+  .rating, .card-type, .compare-table th, .btn--compact { font: var(--weight-semibold) var(--text-meta) var(--font); }
   /* Meta, regular: the year, a time's unit of play, counts, the footer, the limit note's toggletip */
   .card-year, .time-unit, .score-scale, .score-count, .option-count, .pick-count, .footer-text, .toggletip { font: var(--weight-regular) var(--text-meta) var(--font); }
 
@@ -1863,7 +1854,7 @@
     card.dataset.id = item.id;
     card.innerHTML = `
       <div class="card-inner">
-        <div class="card-stage">${stage}${game.tag ? `<span class="card-flag">${esc(game.tag)}</span>` : ""}</div>
+        <div class="card-stage">${stage}</div>
         <div class="card-body">
           <div class="card-head">
             <h3 class="card-title"><a class="card-link" id="card-${item.id}" href="#${item.id}">${esc(game.name)}</a></h3>

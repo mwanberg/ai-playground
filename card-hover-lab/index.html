@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Hover Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+  --c-bg: #F2F3F5;
+  --c-panel: #FFFFFF;
+  --c-ink: #17191C;
+  --c-muted: #5F646C;
+  --c-line: #DDE0E4;
+  --c-hover: #F0F1F3;
+  --c-sel: #17191C;
+  --c-on-sel: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg: #131417; --c-panel: #1C1E22; --c-ink: #ECEDEF; --c-muted: #9A9FA8;
+    --c-line: #2E3137; --c-hover: #25282D; --c-sel: #ECEDEF; --c-on-sel: #131417;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #131417; --c-panel: #1C1E22; --c-ink: #ECEDEF; --c-muted: #9A9FA8;
+  --c-line: #2E3137; --c-hover: #25282D; --c-sel: #ECEDEF; --c-on-sel: #131417;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+body {
+  margin: 0; min-height: 100%;
+  background: var(--c-bg); color: var(--c-ink);
+  font: 15px/1.5 "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+img, svg { max-width: 100%; }
+
+/* ---------- App layout ---------- */
+.app { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 100vh; }
+aside {
+  background: var(--c-panel);
+  border-right: 1px solid var(--c-line);
+  padding: 28px 20px 40px;
+  position: sticky; top: 0;
+  height: 100vh; overflow-y: auto;
+}
+h1 { font-size: 24px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+.intro { color: var(--c-muted); font-size: 14px; margin: 0 0 20px; max-width: 36ch; }
+
+.tabs { display: flex; gap: 2px; border: 1px solid var(--c-line); border-radius: 12px; padding: 3px; margin-bottom: 18px; }
+.tabs button { flex: 1; border: 0; background: transparent; border-radius: 9px; padding: 8px 6px; font-weight: 600; cursor: pointer; }
+.tabs button:hover { background: var(--c-hover); }
+.tabs button[aria-selected="true"] { background: var(--c-sel); color: var(--c-on-sel); }
+
+.panel-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 10px; }
+.panel-tools .count { font-size: 13px; color: var(--c-muted); padding-left: 2px; }
+.panel-tools .seg { display: flex; width: 100%; }
+.panel-tools .seg button { flex: 1; padding-inline: 6px; }
+.sub-title { font-size: 15px; font-weight: 650; margin: 22px 0 8px; display: flex; justify-content: space-between; align-items: baseline; }
+.sub-title:first-child { margin-top: 0; }
+.sub-title small { font-weight: 400; color: var(--c-muted); font-size: 13px; }
+
+.opt-list { display: grid; gap: 2px; transition: opacity 140ms ease; }
+.opt-list.is-leaving { opacity: 0; }
+.is-entering { animation: opt-in 280ms cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes opt-in { from { opacity: 0; translate: 0 6px; } }
+@media (prefers-reduced-motion: reduce) {
+  .opt-list { transition: none; }
+  .is-entering { animation: none; }
+}
+.opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: 10px;
+  padding: 8px 10px; cursor: pointer;
+}
+.opt[hidden] { display: none; }
+.opt:hover { background: var(--c-hover); }
+.opt[aria-checked="true"] { background: var(--c-sel); color: var(--c-on-sel); }
+.opt-name { font-weight: 550; display: block; }
+.opt-desc { display: block; font-size: 13px; color: var(--c-muted); font-weight: 400; line-height: 1.4; }
+.opt[aria-checked="true"] .opt-desc { color: inherit; opacity: .75; }
+.dots { display: flex; flex-shrink: 0; }
+.dots span { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--c-panel); margin-left: -4px; }
+.opt[aria-checked="true"] .dots span { border-color: var(--c-sel); }
+.curve { width: 40px; height: 28px; flex-shrink: 0; overflow: visible; }
+.curve path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.curve .base { stroke: currentColor; opacity: .2; stroke-width: 1; }
+
+.seg { display: inline-flex; border: 1px solid var(--c-line); border-radius: 10px; padding: 3px; gap: 2px; background: var(--c-panel); }
+.seg button { border: 0; background: transparent; border-radius: 7px; padding: 5px 12px; cursor: pointer; font-weight: 550; font-size: 14px; }
+.seg button:hover { background: var(--c-hover); }
+.seg button[aria-checked="true"] { background: var(--c-sel); color: var(--c-on-sel); }
+
+input[type="range"] { width: 100%; accent-color: var(--c-ink); }
+.note { font-size: 13px; color: var(--c-muted); margin: 8px 0 0; }
+
+.switches { display: grid; }
+.switch-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.switch-row:first-child { border-top: 0; padding-top: 0; }
+/* Off is an outlined track with a muted knob and on a filled track with a light knob, so the state shows in
+   more than the knob's place. The outline and the off knob are muted, the color that holds the 3:1 minimum
+   for a control's edge against the panel. */
+.switch {
+  flex-shrink: 0; margin-top: 2px;
+  width: 40px; height: 24px; border-radius: 99px; border: 0; padding: 0;
+  background: var(--c-line); box-shadow: inset 0 0 0 1px var(--c-muted); position: relative; cursor: pointer;
+}
+.switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--c-muted);
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1);
+}
+.switch[aria-checked="true"] { background: var(--c-ink); }
+.switch[aria-checked="true"]::after {
+  transform: translateX(16px); background: var(--c-panel); box-shadow: 0 1px 2px rgb(0 0 0 / .25);
+}
+
+:where(aside, main > :not(.stage)) :focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+
+/* Forced colors drops background fills, which carry the chosen and on states */
+@media (forced-colors: active) {
+  .opt[aria-checked="true"], .seg button[aria-checked="true"], .tabs button[aria-selected="true"] {
+    forced-color-adjust: none; background: Highlight; color: HighlightText;
+  }
+  .switch { border: 1px solid ButtonText; }
+  .switch::after { forced-color-adjust: none; background: ButtonText; }
+  .switch[aria-checked="true"] { forced-color-adjust: none; background: Highlight; }
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+main { padding: 28px clamp(16px, 3vw, 40px) 48px; min-width: 0; }
+.stage-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.stage-head h2 { font-size: 28px; line-height: 1.1; font-weight: 700; margin: 0; letter-spacing: -0.015em; }
+.stage-head p { margin: 4px 0 0; color: var(--c-muted); font-size: 14px; }
+.stage-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.icon-btn {
+  border: 1px solid var(--c-line); background: var(--c-panel); border-radius: 10px;
+  padding: 7px 12px; cursor: pointer; font-size: 14px; font-weight: 550;
+}
+.icon-btn:hover { background: var(--c-hover); }
+.tool-label { font-size: 13px; color: var(--c-muted); margin-right: -2px; }
+
+/* ---------- Stage (palette applies here) ---------- */
+.stage {
+  position: relative;
+  isolation: isolate;
+  --dur: 320ms;
+  --line: color-mix(in srgb, var(--ink) 14%, transparent);
+  --media: #E4E4E4;
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 20px;
+  padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 48px);
+  transition: background-color .35s ease, color .35s ease;
+}
+.grid {
+  position: relative;
+  display: grid; gap: clamp(16px, 2.4vw, 28px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  max-width: calc(var(--n, 3) * 290px);
+  margin-inline: auto;
+}
+.slot { position: relative; display: grid; }
+.slot[hidden] { display: none; }
+.slot > .card { z-index: 1; }
+.glide, .iris { display: none; }
+
+.card {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Ink, not accent: the ring sits on the stage background, which every palette pairs with ink for contrast */
+.card:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.media { position: relative; aspect-ratio: 4 / 3; background-color: var(--media); overflow: hidden; display: grid; place-items: center; }
+.media svg { width: 80%; height: auto; display: block; }
+/* Product art stays grayscale so only the UI responds to the palette */
+.ill .a { fill: #5C5C5C; }
+.ill .b { fill: #A3A3A3; }
+.ill .i { fill: #2B2B2B; }
+.ill .s { fill: #F7F7F7; }
+.ill .k { stroke: #2B2B2B; stroke-width: 3; }
+.ill .o { fill: none; stroke: #2B2B2B; stroke-width: 3; stroke-linecap: round; }
+.specs {
+  position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
+  padding: 12px 16px; list-style: none;
+  display: grid; gap: 2px; font-size: 13px;
+  background: color-mix(in srgb, var(--ink) 90%, transparent);
+  color: var(--surface);
+  opacity: 0;
+}
+.body { position: relative; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.tag {
+  align-self: flex-start; font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 99px;
+  background: var(--accent2); color: var(--on-accent2);
+}
+.card h3 { margin: 4px 0 0; font-size: 19px; line-height: 1.2; font-weight: 650; }
+.card .muted { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.row { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.price { font-weight: 700; font-size: 18px; }
+.buy {
+  border: 0; border-radius: 99px; padding: 8px 15px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: var(--on-accent);
+}
+.buy:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Swatches + code ---------- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 18px 0 0; }
+.swatch {
+  display: flex; flex-direction: column; text-align: left;
+  border: 1px solid var(--c-line); background: var(--c-panel); border-radius: 12px;
+  padding: 0; overflow: hidden; cursor: pointer;
+}
+.swatch .chip { height: 44px; border-bottom: 1px solid var(--c-line); }
+.swatch .meta { padding: 8px 10px; font-size: 13px; }
+.swatch .meta b { display: block; font-weight: 600; }
+.swatch .meta code { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 12px; color: var(--c-muted); }
+.swatch:hover { border-color: var(--c-muted); }
+.hint { font-size: 13px; color: var(--c-muted); margin: 8px 0 0; min-height: 1.5em; }
+
+details { margin-top: 22px; border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-panel); }
+summary { cursor: pointer; padding: 14px 16px; font-weight: 600; border-radius: 14px; }
+.code-wrap { padding: 0 16px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.code-wrap > div { min-width: 0; }
+.code-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--c-muted); margin-bottom: 6px; }
+.copy { border: 1px solid var(--c-line); background: transparent; border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.copy:hover { background: var(--c-hover); }
+pre {
+  margin: 0; overflow-x: auto; padding: 14px; border-radius: 10px;
+  background: var(--c-bg); border: 1px solid var(--c-line);
+  font: 12.5px/1.6 "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--c-line); padding-bottom: 16px; }
+  .intro { max-width: none; }
+  /* The 4px padding, cancelled by the margin, keeps focus rings inside the scroll box's clip */
+  .opt-list { display: flex; overflow-x: auto; gap: 6px; padding: 4px 4px 10px; margin: -4px; scrollbar-width: thin; }
+  .opt-list .opt { width: auto; flex-shrink: 0; border-color: var(--c-line); }
+  .opt-list .opt-desc { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage, .stage * { --dur: 1ms !important; }
+  .card, .card * { animation: none !important; }
+  /* These transitions use fixed durations rather than --dur */
+  .switch::after, .slot, .buy { transition-duration: 0s !important; }
+  /* Parallax moves layers with the pointer; the tilt effects stop in JS */
+  .stage .media svg, .stage .body { translate: none !important; }
+}
+</style>
+<style id="fx-style"></style>
+<style id="motion-style"></style>
+<!-- icons -->
+<link rel="icon" href="../favicon.ico?v=b1de437e" sizes="32x32">
+<link rel="icon" href="../favicon.svg?v=315bd3bc" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=be987201">
+<link rel="manifest" href="../site.webmanifest?v=672ef44b">
+<!-- /icons -->
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Card Hover Lab</h1>
+    <p class="intro">Pick a palette, an effect and how it moves, then hover, tap or tab through the cards.</p>
+
+    <div class="tabs" role="tablist" aria-label="Settings">
+      <button type="button" role="tab" id="tab-palette" aria-controls="panel-palette" data-tab="palette">Palette</button>
+      <button type="button" role="tab" id="tab-effect" aria-controls="panel-effect" data-tab="effect">Effect</button>
+      <button type="button" role="tab" id="tab-motion" aria-controls="panel-motion" data-tab="motion">Motion</button>
+    </div>
+
+    <section role="tabpanel" id="panel-palette" aria-labelledby="tab-palette">
+      <div class="panel-tools">
+        <div class="seg" id="pal-filter" role="radiogroup" aria-label="Filter palettes">
+          <button type="button" role="radio" data-value="all">All</button>
+          <button type="button" role="radio" data-value="light">Light</button>
+          <button type="button" role="radio" data-value="dark">Dark</button>
+        </div>
+        <span class="count" id="pal-count"></span>
+      </div>
+      <div class="opt-list" id="palette-list" role="radiogroup" aria-label="Palette"></div>
+    </section>
+
+    <section role="tabpanel" id="panel-effect" aria-labelledby="tab-effect" hidden>
+      <div class="panel-tools">
+        <div class="seg" id="fx-filter" role="radiogroup" aria-label="Effect type">
+          <button type="button" role="radio" data-value="Single">Single</button>
+          <button type="button" role="radio" data-value="Grid">Grid</button>
+          <button type="button" role="radio" data-value="Trails">Trails</button>
+          <button type="button" role="radio" data-value="Combos">Combos</button>
+        </div>
+        <span class="count" id="fx-count"></span>
+      </div>
+      <div class="opt-list" id="effect-list" role="radiogroup" aria-label="Effect"></div>
+    </section>
+
+    <!-- tabindex: the panel opens on a heading, so the panel itself takes the Tab stop after the tab list -->
+    <section role="tabpanel" id="panel-motion" aria-labelledby="tab-motion" tabindex="0" hidden>
+      <h2 class="sub-title"><label for="speed">Speed</label> <small id="speed-val" aria-hidden="true">1×</small></h2>
+      <input type="range" id="speed" min="0.25" max="2.5" step="0.25" value="1">
+      <p class="note" id="rm-note" hidden>Your system asks for reduced motion, so effects switch instantly here.</p>
+
+      <h2 class="sub-title">Feel</h2>
+      <div class="switches" id="switches"></div>
+
+      <h2 class="sub-title" id="ease-title">Easing</h2>
+      <div class="opt-list" id="ease-list" role="radiogroup" aria-labelledby="ease-title"></div>
+      <p class="note" id="ease-note" hidden></p>
+    </section>
+  </aside>
+
+  <main>
+    <div class="stage-head">
+      <div>
+        <h2 id="stage-title">Palette</h2>
+        <p id="stage-sub"></p>
+      </div>
+      <div class="stage-tools">
+        <button type="button" class="icon-btn" id="prev-pal" aria-label="Previous palette">‹ Palette</button>
+        <button type="button" class="icon-btn" id="next-pal" aria-label="Next palette">Palette ›</button>
+        <button type="button" class="icon-btn" id="prev-fx" aria-label="Previous effect">‹ Effect</button>
+        <button type="button" class="icon-btn" id="next-fx" aria-label="Next effect">Effect ›</button>
+        <span class="tool-label" id="count-label">Cards</span>
+        <div class="seg" id="count-seg" role="radiogroup" aria-labelledby="count-label">
+          <button type="button" role="radio" data-value="2">2</button>
+          <button type="button" role="radio" data-value="3">3</button>
+          <button type="button" role="radio" data-value="4">4</button>
+        </div>
+      </div>
+      <p class="visually-hidden" id="stage-status" role="status"></p>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="swatches" id="swatches"></div>
+    <p class="hint"><span id="hint-default">Click a swatch to copy its hex value.</span><span id="hint" role="status"></span></p>
+
+    <details>
+      <summary>Code for this combination</summary>
+      <div class="code-wrap">
+        <div>
+          <div class="code-head"><span>Palette tokens</span><button type="button" class="copy" data-copy="pal-code" aria-label="Copy palette tokens">Copy</button></div>
+          <pre><code id="pal-code"></code></pre>
+        </div>
+        <div>
+          <div class="code-head"><span>Hover effect</span><button type="button" class="copy" data-copy="fx-code" aria-label="Copy effect CSS">Copy</button></div>
+          <pre><code id="fx-code"></code></pre>
+        </div>
+        <div>
+          <div class="code-head"><span>Motion extras</span><button type="button" class="copy" data-copy="motion-code" aria-label="Copy motion CSS">Copy</button></div>
+          <pre><code id="motion-code"></code></pre>
+        </div>
+        <div>
+          <div class="code-head"><span>JavaScript</span><button type="button" class="copy" data-copy="js-code" aria-label="Copy JavaScript">Copy</button></div>
+          <pre><code id="js-code"></code></pre>
+        </div>
+      </div>
+    </details>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Palettes ---------- */
+  const PALETTES = [
+    { mood: "Bold & vibrant", name: "Voltage",  bg: "#F2F0FF", surface: "#FFFFFF", ink: "#16123A", muted: "#5B5680", accent: "#E8174F", accent2: "#3A2BFF", onAccent: "#FFFFFF", onAccent2: "#FFFFFF" },
+    { mood: "Bold & vibrant", name: "Arcade",   bg: "#FFE14D", surface: "#FFFDF0", ink: "#1A1A1A", muted: "#5A5540", accent: "#D60F5A", accent2: "#00A3A3", onAccent: "#FFFFFF", onAccent2: "#1A1A1A" },
+    { mood: "Cool & minimal", name: "Glacier",  bg: "#EAF0F4", surface: "#FFFFFF", ink: "#1E2A33", muted: "#62748A", accent: "#2F6FDB", accent2: "#A9CBEA", onAccent: "#FFFFFF", onAccent2: "#1E2A33" },
+    { mood: "Cool & minimal", name: "Slate",    bg: "#F4F5F7", surface: "#FFFFFF", ink: "#202326", muted: "#6B7078", accent: "#2E3A4B", accent2: "#C3CCD8", onAccent: "#FFFFFF", onAccent2: "#202326" },
+    { mood: "Dark & moody",   name: "Midnight", bg: "#0E1220", surface: "#171C2E", ink: "#E8EAF2", muted: "#8B91A8", accent: "#8C7CFF", accent2: "#3DD6C6", onAccent: "#0E1220", onAccent2: "#0E1220" },
+    { mood: "Dark & moody",   name: "Ember",    bg: "#17110F", surface: "#241B18", ink: "#F3E8E1", muted: "#A89287", accent: "#FF7A3D", accent2: "#E0B83A", onAccent: "#17110F", onAccent2: "#17110F" },
+    { mood: "Floral & cheerful", name: "Peony", bg: "#FFEFF3", surface: "#FFFFFF", ink: "#3A1C2B", muted: "#8A6274", accent: "#D6336C", accent2: "#FFB547", onAccent: "#FFFFFF", onAccent2: "#3A1C2B" },
+    { mood: "Floral & cheerful", name: "Bloom", bg: "#F5F0FF", surface: "#FFFFFF", ink: "#2C2342", muted: "#6E6585", accent: "#8A4FD8", accent2: "#F15BB5", onAccent: "#FFFFFF", onAccent2: "#2C2342" },
+    { mood: "Green & earthy", name: "Fern",     bg: "#EDF1E3", surface: "#FBFCF7", ink: "#1F2B1C", muted: "#5E6B57", accent: "#3F7A3A", accent2: "#D39A4A", onAccent: "#FFFFFF", onAccent2: "#1F2B1C" },
+    { mood: "Green & earthy", name: "Moss",     bg: "#262C23", surface: "#313A2D", ink: "#EEF0E4", muted: "#A9B19C", accent: "#A8C66C", accent2: "#D9A05B", onAccent: "#1F251C", onAccent2: "#1F251C" },
+    { mood: "Electric & noir", name: "Noir light", bg: "#E8E8EC", surface: "#FFFFFF", ink: "#0B0B10", muted: "#5A5A66", accent: "#5B2BFF", accent2: "#00E0FF", onAccent: "#FFFFFF", onAccent2: "#0B0B10" },
+    { mood: "Electric & noir", name: "Noir dark",  bg: "#050507", surface: "#121217", ink: "#F4F4F8", muted: "#8E8E9C", accent: "#00E0FF", accent2: "#FF2BD6", onAccent: "#050507", onAccent2: "#050507" },
+    { mood: "Retro 70s",   name: "Disco",    bg: "#F6E7C8", surface: "#FFF8EA", ink: "#3B2414", muted: "#7A5A44", accent: "#B5481B", accent2: "#E8A33D", onAccent: "#FFFFFF", onAccent2: "#3B2414" },
+    { mood: "Soft pastel", name: "Sorbet",   bg: "#FDF3EC", surface: "#FFFFFF", ink: "#3A3346", muted: "#6E6680", accent: "#7A5CC7", accent2: "#FFC8B4", onAccent: "#FFFFFF", onAccent2: "#3A3346" },
+    { mood: "Coastal",     name: "Tidepool", bg: "#E6F2F1", surface: "#FFFFFF", ink: "#0F2E33", muted: "#4C6B70", accent: "#0E7C86", accent2: "#F2B880", onAccent: "#FFFFFF", onAccent2: "#0F2E33" },
+    { mood: "Sunset",      name: "Dusk",     bg: "#1E1530", surface: "#2A1F40", ink: "#F7EDF5", muted: "#A898B8", accent: "#FF8A5B", accent2: "#E85D9E", onAccent: "#1E1530", onAccent2: "#1E1530" },
+    { mood: "Monochrome",  name: "Graphite", bg: "#EDEDED", surface: "#FFFFFF", ink: "#111111", muted: "#666666", accent: "#111111", accent2: "#D9D9D9", onAccent: "#FFFFFF", onAccent2: "#111111" },
+    { mood: "Y2K",         name: "Chrome",   bg: "#DDE3EA", surface: "#F7F9FC", ink: "#1B1F2A", muted: "#5C6475", accent: "#FF3EA5", accent2: "#7FE7FF", onAccent: "#1B1F2A", onAccent2: "#1B1F2A" },
+    { mood: "Coffee",      name: "Roastery", bg: "#EFE6DD", surface: "#FAF6F1", ink: "#2B1D16", muted: "#7A6556", accent: "#6B3F2A", accent2: "#D7B48A", onAccent: "#FFFFFF", onAccent2: "#2B1D16" },
+    { mood: "Calm",        name: "Lull",     bg: "#EEEDF7", surface: "#FFFFFF", ink: "#26243A", muted: "#67647E", accent: "#5C55A6", accent2: "#C9C3F0", onAccent: "#FFFFFF", onAccent2: "#26243A" },
+    { mood: "Citrus",      name: "Zest",     bg: "#F4FAE3", surface: "#FFFFFF", ink: "#1E2B12", muted: "#5A6B48", accent: "#F28C00", accent2: "#C6E85A", onAccent: "#1E2B12", onAccent2: "#1E2B12" },
+    { mood: "Teal & gold", name: "Lagoon",   bg: "#E8F1F2", surface: "#FFFFFF", ink: "#0E2A33", muted: "#4E6A73", accent: "#0F6E7A", accent2: "#D9A93A", onAccent: "#FFFFFF", onAccent2: "#0E2A33" },
+    { mood: "Teal & gold", name: "Harbor",   bg: "#0C1F26", surface: "#133038", ink: "#EAF3F2", muted: "#8FAEB0", accent: "#E2B547", accent2: "#C23B2E", onAccent: "#0C1F26", onAccent2: "#FFFFFF" }
+  ];
+  const TOKENS = [
+    ["bg", "Background"], ["surface", "Surface"], ["ink", "Ink"],
+    ["muted", "Muted"], ["accent", "Accent"], ["onAccent", "On accent"],
+    ["accent2", "Accent 2"], ["onAccent2", "On accent 2"]
+  ];
+  const cssVar = (key) => "--" + key.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  // WCAG relative luminance of a #RRGGBB color
+  function luminance(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [n >> 16, (n >> 8) & 255, n & 255]
+      .map((v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+      .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  }
+  PALETTES.forEach((p) => { p.dark = luminance(p.bg) < 0.2; });
+
+  /* ---------- Easing ---------- */
+  function springLinear() {
+    const z = 0.5, w = 11, wd = w * Math.sqrt(1 - z * z), out = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40;
+      const y = 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t));
+      out.push(i === 40 ? 1 : +y.toFixed(3));
+    }
+    return out;
+  }
+  const SPRING = springLinear();
+  const EASES = [
+    { id: "default", name: "Effect default", desc: "Each effect’s own tuned curve." },
+    { id: "ease-out", name: "Ease out", desc: "Fast start, gentle stop.", css: "cubic-bezier(0, 0, .58, 1)", bez: [0, 0, .58, 1] },
+    { id: "expo", name: "Expo out", desc: "Snaps in, then a long soft settle.", css: "cubic-bezier(.16, 1, .3, 1)", bez: [.16, 1, .3, 1] },
+    { id: "in-out", name: "Ease in-out", desc: "Smooth and symmetrical.", css: "cubic-bezier(.65, 0, .35, 1)", bez: [.65, 0, .35, 1] },
+    { id: "in", name: "Ease in", desc: "Slow start. Feels sluggish on hover.", css: "cubic-bezier(.42, 0, 1, 1)", bez: [.42, 0, 1, 1] },
+    { id: "back", name: "Back out", desc: "Overshoots a little, then settles.", css: "cubic-bezier(.34, 1.56, .64, 1)", bez: [.34, 1.56, .64, 1] },
+    { id: "spring", name: "Spring", desc: "Wobbles like a real spring. Runs longer.", css: "linear(" + SPRING.join(", ") + ")", samples: SPRING, durScale: 2 },
+    { id: "linear", name: "Linear", desc: "Constant speed. Mechanical.", css: "linear", bez: [0, 0, 1, 1] },
+    { id: "steps", name: "Steps", desc: "Jumps in six frames.", css: "steps(6, end)", steps: 6 }
+  ];
+
+  function curvePath(e) {
+    const W = 40, Hh = 28, pts = [];
+    function map(x, y) { return [x * W, Hh - 4 - y * (Hh - 10)]; }
+    if (e.bez) {
+      const b = e.bez;
+      for (let i = 0; i <= 30; i++) {
+        const t = i / 30, mt = 1 - t;
+        const x = 3 * mt * mt * t * b[0] + 3 * mt * t * t * b[2] + t * t * t;
+        const y = 3 * mt * mt * t * b[1] + 3 * mt * t * t * b[3] + t * t * t;
+        pts.push(map(x, y));
+      }
+    } else if (e.samples) {
+      e.samples.forEach(function (y, i) { pts.push(map(i / (e.samples.length - 1), y)); });
+    } else if (e.steps) {
+      for (let s = 0; s < e.steps; s++) {
+        pts.push(map(s / e.steps, s / e.steps));
+        pts.push(map((s + 1) / e.steps, s / e.steps));
+      }
+      pts.push(map(1, 1));
+    } else {
+      return "";
+    }
+    return "M" + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L");
+  }
+
+  /* ---------- Hover effects ----------
+     Placeholders: HOVER = hovered state, EASE = chosen easing,
+     TRACK = duration for pointer-tracked properties */
+  const H = ":is(:hover, :focus-within, .is-active)";
+  const PROPS =
+`@property --pa { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+@property --edge { syntax: '<number>'; inherits: true; initial-value: 1; }
+`;
+  const RING =
+`/* Border follow ring: darker accent all round, lighter one at the pointer */
+.card { border-width: 2px; }
+.card::before {
+  content: '';
+  position: absolute; inset: -2px; z-index: 3; pointer-events: none;
+  border-radius: inherit;
+  --spread: calc(120deg - 60deg * var(--edge));
+  padding: calc(2px + 1.5px * var(--edge));
+  background: conic-gradient(from calc(var(--pa) - 180deg),
+    var(--glow-base) 0deg,
+    var(--glow-base) calc(180deg - var(--spread)),
+    var(--glow-hot) 180deg,
+    var(--glow-base) calc(180deg + var(--spread)),
+    var(--glow-base) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--dur) EASE;
+}
+.cardHOVER::before { opacity: 1; }`;
+  function HOLO(op) {
+    return `.card::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .55), transparent 45%),
+    linear-gradient(115deg, #FF7EB3, #FFD36E, #7EFFC2, #6EC8FF, #B28CFF, #FF7EB3, #FFD36E, #7EFFC2);
+  background-size: 100% 100%, 300% 300%;
+  background-position: center, var(--mx, 50%) var(--my, 50%);
+  opacity: 0;
+  transition: opacity var(--dur) EASE;
+}
+.cardHOVER::after { opacity: ${op}; }
+`;
+  }
+  const LIFT =
+`.card {
+  transition: transform var(--dur) EASE, box-shadow var(--dur) ease;
+}
+.cardHOVER {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 36px -18px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+`;
+  const FLOOD =
+`.body { isolation: isolate; }
+.body::before {
+  content: '';
+  position: absolute; inset: 0; z-index: -1;
+  background: var(--accent);
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform var(--dur) EASE;
+}
+.body, .body * { transition: color var(--dur) ease, background-color var(--dur) ease; }
+.cardHOVER .body::before { transform: scaleY(1); }
+.cardHOVER .body, .cardHOVER .muted { color: var(--on-accent); }
+.cardHOVER .buy { background: var(--on-accent); color: var(--accent); }
+/* The button's focus ring now sits on accent, so it takes the accent's text color */
+.cardHOVER .buy:focus-visible { outline-color: var(--on-accent); }`;
+  const REST_SHADOW = "0 16px 32px -20px color-mix(in srgb, var(--ink) 40%, transparent)";
+  const TRAIL_CSS =
+`/* JS draws the particles on a canvas covering the stage; isolation
+   keeps the canvas's blend mode from reaching past the stage */
+.stage { position: relative; isolation: isolate; }
+.card { transition: transform var(--dur) EASE; }
+.cardHOVER { transform: translateY(-3px); }`;
+
+  const EFFECTS = [
+    { name: "Lift", desc: "Card rises with a soft shadow.", ease: "cubic-bezier(.2, .8, .2, 1)", css:
+`.card {
+  transition: transform var(--dur) EASE, box-shadow var(--dur) ease;
+}
+.cardHOVER {
+  transform: translateY(-8px);
+  box-shadow: 0 22px 40px -18px color-mix(in srgb, var(--ink) 45%, transparent);
+}` },
+
+    { name: "Tilt", desc: "Card tilts toward the pointer in 3D.", tilt: true, ease: "ease-out", css:
+`/* JS sets --rx / --ry and --px / --py from the pointer */
+.card {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  box-shadow: ${REST_SHADOW};
+  transition: transform TRACK EASE, box-shadow var(--dur) ease;
+}
+.cardHOVER {
+  /* The shadow shifts away from the side tilting down */
+  box-shadow: calc(var(--px, 0) * -10px) calc(24px - var(--py, 0) * 6px) 40px -20px color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.media svg { transition: transform var(--dur) EASE; }
+.cardHOVER .media svg { transform: scale(1.05); }` },
+
+    { name: "Spotlight", desc: "A glow follows the pointer.", ease: "ease", css:
+`/* JS sets --mx / --my from the pointer */
+.card { transition: border-color var(--dur) ease; }
+.card::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 40%),
+    color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--dur) EASE;
+}
+.cardHOVER::after { opacity: 1; }
+.cardHOVER { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }` },
+
+    { name: "Border trace", desc: "A gradient runs around the edge.", noEase: true, ease: "linear", css:
+`@property --angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.card { border-width: 2px; }
+.cardHOVER {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    conic-gradient(from var(--angle), transparent 55%, var(--accent), var(--accent2), transparent) border-box;
+  animation: trace calc(var(--dur) * 8) linear infinite;
+}
+@keyframes trace { to { --angle: 360deg; } }` },
+
+    { name: "Border follow", desc: "Darker accent rings the card, the lighter one follows the pointer.", ease: "ease-out", css: PROPS +
+`/* JS sets --pa (pointer angle around the center) and --edge (0 center, 1 edge) */
+.card { transition: --pa TRACK EASE, --edge TRACK EASE; }
+` + RING },
+
+    { name: "Image zoom", desc: "Product image scales and turns.", ease: "cubic-bezier(.2, .8, .2, 1)", css:
+`.media { transition: background-color var(--dur) ease; }
+.media svg { transition: transform calc(var(--dur) * 1.6) EASE; }
+.cardHOVER .media { background-color: #D6D6D6; }
+.cardHOVER .media svg { transform: scale(1.14) rotate(-4deg); }` },
+
+    { name: "Detail reveal", desc: "Specs slide up over the image.", ease: "cubic-bezier(.2, .8, .2, 1)", css:
+`.specs {
+  opacity: 1;
+  transform: translateY(100%);
+  transition: transform var(--dur) EASE;
+}
+.cardHOVER .specs { transform: translateY(0); }
+.media svg { transition: transform var(--dur) EASE; }
+.cardHOVER .media svg { transform: translateY(-14%); }` },
+
+    { name: "Accent flood", desc: "Accent color fills the text panel.", ease: "cubic-bezier(.2, .8, .2, 1)", css: FLOOD },
+
+    { name: "Shine", desc: "A gloss sweeps across once.", ease: "ease", css:
+`.card { transition: transform var(--dur) EASE; }
+.card::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / .4) 50%, transparent 65%);
+  transform: translateX(-110%);
+}
+.cardHOVER { transform: translateY(-3px); }
+.cardHOVER::after {
+  transform: translateX(110%);
+  transition: transform calc(var(--dur) * 2.4) EASE;
+}` },
+
+    { name: "Offset pop", desc: "Card jumps off a solid shadow.", ease: "cubic-bezier(.3, 1.6, .5, 1)", css:
+`.card {
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 var(--accent);
+  transition: transform var(--dur) EASE, box-shadow var(--dur) EASE;
+}
+.cardHOVER {
+  transform: translate(-5px, -5px);
+  box-shadow: 7px 7px 0 var(--accent);
+}` },
+
+    { name: "Holographic foil", desc: "A rainbow sheen and glare follow the pointer.", tilt: true, ease: "ease-out", css:
+`/* JS sets --mx / --my and --rx / --ry from the pointer */
+.card {
+  transform: perspective(900px) rotateX(calc(var(--rx, 0deg) * .5)) rotateY(calc(var(--ry, 0deg) * .5));
+  transition: transform TRACK EASE;
+}
+` + HOLO(.38) },
+
+    { name: "Parallax layers", desc: "Image and text drift at different depths.", ease: "ease-out", css:
+`/* JS sets --px / --py from -1 to 1 across the card */
+.card { box-shadow: 0 12px 28px -20px color-mix(in srgb, var(--ink) 35%, transparent); }
+.media svg {
+  translate: calc(var(--px, 0) * -14px) calc(var(--py, 0) * -10px);
+  transition: translate TRACK EASE, scale var(--dur) EASE;
+}
+.body {
+  translate: calc(var(--px, 0) * 5px) calc(var(--py, 0) * 4px);
+  transition: translate TRACK EASE;
+}
+.cardHOVER .media svg { scale: 1.1; }` },
+
+    { name: "Stack fan", desc: "Two cards fan out from behind.", ease: "cubic-bezier(.3, 1.4, .5, 1)", css:
+`/* Needs a wrapper (.slot) around each card to hold the cards behind it */
+.slot::before, .slot::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: 18px;
+  border: 1px solid var(--line);
+  transform-origin: 50% 100%;
+  transition: transform var(--dur) EASE;
+}
+.slot::before { background: color-mix(in srgb, var(--accent2) 60%, var(--surface)); }
+.slot::after { background: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.slot:has(.cardHOVER) { z-index: 2; }
+.slot:has(.cardHOVER)::before { transform: rotate(-4deg); }
+.slot:has(.cardHOVER)::after { transform: rotate(3deg) translateY(-6px); }
+.card { transition: transform var(--dur) EASE; }
+.cardHOVER { transform: translateY(-6px); }` },
+
+    { name: "Iris reveal", desc: "A tinted image opens from the pointer.", ease: "cubic-bezier(.16, 1, .3, 1)", css:
+`/* .iris holds a tinted copy of the image (the same <img> for a photo), clipped
+   to a circle that opens from the pointer. JS sets --mx / --iy over the image. */
+.iris {
+  display: grid; place-items: center;
+  position: absolute; inset: 0;
+  background: var(--accent);
+  clip-path: circle(0% at var(--mx, 50%) var(--iy, 50%));
+  transition: clip-path calc(var(--dur) * 1.6) EASE;
+}
+.iris svg, .iris img { mix-blend-mode: luminosity; opacity: .9; }
+.cardHOVER .iris { clip-path: circle(150% at var(--mx, 50%) var(--iy, 50%)); }` },
+
+    { name: "Type shuffle", desc: "Name and price scramble, then resolve.", shuffle: true, ease: "ease", css:
+`/* JS scrambles the name and price on hover, resolving left to right */
+.price { font-variant-numeric: tabular-nums; }
+.card { transition: transform var(--dur) EASE; }
+.cardHOVER { transform: translateY(-3px); }` },
+
+    /* ----- Grid ----- */
+    { group: "Grid", name: "Sliding highlight", desc: "A halo glides from card to card.", glide: true, ease: "linear(" + SPRING.join(", ") + ")", css:
+`/* One shared .glide element in the grid. JS moves it behind the hovered
+   card by setting --gx / --gy / --gw / --gh. */
+.grid { position: relative; }
+.glide {
+  display: block;
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: var(--gw, 0px); height: var(--gh, 0px);
+  translate: var(--gx, 0px) var(--gy, 0px);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
+  opacity: 0;
+  transition: translate calc(var(--dur) * 2) EASE, width calc(var(--dur) * 2) EASE,
+              height calc(var(--dur) * 2) EASE, opacity var(--dur) ease;
+}
+.glide.is-on { opacity: 1; }
+.card { transition: transform var(--dur) ease; }
+.cardHOVER { transform: translateY(-3px); }` },
+
+    { group: "Grid", name: "Neighbor recede", desc: "The other cards step back.", ease: "cubic-bezier(.2, .8, .2, 1)", css:
+`/* Siblings step back while one card is hovered */
+.card { transition: scale var(--dur) EASE, opacity var(--dur) ease, filter var(--dur) ease; }
+.grid:has(.cardHOVER) .card:not(.cardHOVER) {
+  scale: .95;
+  opacity: .5;
+  filter: saturate(.5);
+}
+.cardHOVER { scale: 1.02; }` },
+
+    { group: "Grid", name: "Sliding shadow", desc: "A soft shadow glides under the lifted card. Best on light palettes.", glide: true, glidePad: -8, ease: "cubic-bezier(.22, 1, .36, 1)", css:
+`/* One shared .glide element in the grid, a card-sized shadow that JS moves
+   to the hovered card (--gx / --gy / --gw / --gh). The heavy blur leaves no
+   hard edges, so mid-slide it still reads as a shadow, not a shape. */
+.grid { position: relative; }
+.glide {
+  display: block;
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: var(--gw, 0px); height: var(--gh, 0px);
+  translate: var(--gx, 0px) calc(var(--gy, 0px) + 20px);
+  border-radius: 28px;
+  background: color-mix(in srgb, color-mix(in srgb, var(--ink), black 70%) 42%, transparent);
+  filter: blur(22px);
+  opacity: 0;
+  transition: translate calc(var(--dur) * 1.6) EASE, width calc(var(--dur) * 1.6) EASE,
+              height calc(var(--dur) * 1.6) EASE, opacity var(--dur) ease;
+}
+/* JS sets --soft from the shadow's speed: 0 settled, 1 travelling fast */
+.glide.is-on {
+  opacity: 1;
+  filter: blur(calc(22px + 4px * var(--soft, 0))) opacity(calc(1 - .55 * var(--soft, 0)));
+  scale: calc(1 - .08 * var(--soft, 0));
+}
+.card { transition: transform var(--dur) EASE, box-shadow var(--dur) EASE; }
+.cardHOVER {
+  transform: translateY(-8px);
+  /* A close shadow attached to the card keeps its edge crisp */
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--ink) 35%, transparent);
+}` },
+
+    { group: "Grid", name: "Sliding glow", desc: "A blurred accent glow glides behind the cards. Best on dark palettes.", glide: true, glidePad: 4, ease: "cubic-bezier(.22, 1, .36, 1)", css:
+`/* One shared .glide element in the grid, blurred into a glow in the lighter
+   accent. JS moves it behind the hovered card (--gx / --gy / --gw / --gh). */
+.grid { position: relative; }
+.glide {
+  display: block;
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: var(--gw, 0px); height: var(--gh, 0px);
+  translate: var(--gx, 0px) var(--gy, 0px);
+  border-radius: 24px;
+  background: var(--glow-hot);
+  filter: blur(28px);
+  opacity: 0;
+  transition: translate calc(var(--dur) * 1.8) EASE, width calc(var(--dur) * 1.8) EASE,
+              height calc(var(--dur) * 1.8) EASE, opacity var(--dur) ease;
+}
+/* JS sets --soft from the glow's speed: 0 settled, 1 travelling fast */
+.glide.is-on {
+  opacity: .7;
+  filter: blur(calc(28px + 4px * var(--soft, 0))) opacity(calc(1 - .55 * var(--soft, 0)));
+  scale: calc(1 - .1 * var(--soft, 0));
+}
+.card { transition: transform var(--dur) EASE, border-color var(--dur) ease; }
+.cardHOVER {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--glow-hot) 60%, transparent);
+}` },
+
+    /* ----- Trails ----- */
+    { group: "Trails", name: "Sparkles", desc: "Speed-aware sparkles follow the pointer.", trail: "sparkle", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+    { group: "Trails", name: "Light painting", desc: "A tapered ribbon of light traces your path.", trail: "paint", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+    { group: "Trails", name: "Pixel glow", desc: "Grid cells light up under the pointer, then fade.", trail: "pixel", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+    { group: "Trails", name: "Confetti", desc: "Click Add to cart for a burst of confetti.", trail: "confetti", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS + `
+.buy { transition: scale 160ms cubic-bezier(.34, 1.56, .64, 1); }
+.buy:active { scale: .92; }` },
+
+    { group: "Trails", name: "Comet", desc: "A glowing head chases the pointer, its tail stretching with speed.", trail: "comet", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+    { group: "Trails", name: "Settling snow", desc: "Flakes drift down, pile up along the bottom, then melt.", trail: "snow", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+    { group: "Trails", name: "Contained", desc: "Particles bounce around inside the card like a glass box.", trail: "contained", ease: "cubic-bezier(.2, .8, .2, 1)", css: TRAIL_CSS },
+
+    /* ----- Combos ----- */
+    { group: "Combos", name: "Lean & glow", desc: "Tilt with border follow.", tilt: true, ease: "ease-out", css: PROPS +
+`/* JS sets --rx / --ry, --px / --py, --pa and --edge from the pointer */
+.card {
+  transform: perspective(900px) rotateX(calc(var(--rx, 0deg) * .75)) rotateY(calc(var(--ry, 0deg) * .75));
+  box-shadow: ${REST_SHADOW};
+  transition: transform TRACK EASE, box-shadow var(--dur) ease,
+              --pa TRACK EASE, --edge TRACK EASE;
+}
+.cardHOVER {
+  box-shadow: calc(var(--px, 0) * -8px) calc(22px - var(--py, 0) * 5px) 40px -20px color-mix(in srgb, var(--ink) 50%, transparent);
+}
+` + RING },
+
+    { group: "Combos", name: "Glow edge", desc: "Spotlight with border follow, in matching colors.", ease: "ease-out", css: PROPS +
+`/* JS sets --mx / --my, --pa and --edge from the pointer */
+.card { transition: --pa TRACK EASE, --edge TRACK EASE; }
+.card::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 40%),
+    color-mix(in srgb, var(--glow-hot) 24%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--dur) EASE;
+}
+.cardHOVER::after { opacity: 1; }
+` + RING },
+
+    { group: "Combos", name: "Deep tilt", desc: "Tilt in 3D, with the image popping forward and the text lifting.", tilt: true, ease: "ease-out", css:
+`/* JS sets --rx / --ry and --px / --py from the pointer. The layers sit at
+   their own depths in real 3D: image, then title and button, then text. */
+.slot { perspective: 900px; }
+.card {
+  overflow: visible;           /* clipping would flatten the 3D layers */
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--rx, 0deg) * .8)) rotateY(calc(var(--ry, 0deg) * .8));
+  box-shadow: ${REST_SHADOW};
+  transition: transform TRACK EASE, box-shadow var(--dur) ease;
+}
+.cardHOVER {
+  box-shadow: calc(var(--px, 0) * -8px) calc(24px - var(--py, 0) * 5px) 44px -22px color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.media, .body, .row { transform-style: preserve-3d; }
+.media { overflow: visible; border-radius: 17px 17px 0 0; } /* The card's 18px radius inside its 1px border */
+.media svg, .body, .card h3, .buy {
+  transition: transform var(--dur) EASE, filter var(--dur) ease,
+              text-shadow var(--dur) ease, box-shadow var(--dur) ease;
+}
+.cardHOVER .media svg {
+  transform: translateZ(60px);
+  filter: drop-shadow(0 14px 12px color-mix(in srgb, var(--ink) 30%, transparent));
+}
+.cardHOVER .body { transform: translateZ(18px); }
+.cardHOVER h3, .cardHOVER .buy { transform: translateZ(14px); } /* On top of .body's 18px */
+/* Ink darkened toward black stays a shadow on dark palettes too */
+.cardHOVER h3 { text-shadow: 0 3px 4px color-mix(in srgb, color-mix(in srgb, var(--ink), black 70%) 22%, transparent); }
+.cardHOVER .buy { box-shadow: 0 5px 10px -4px color-mix(in srgb, color-mix(in srgb, var(--ink), black 70%) 45%, transparent); }` },
+
+    { group: "Combos", name: "Rare card", desc: "Holographic foil with border follow.", tilt: true, ease: "ease-out", css: PROPS +
+`/* JS sets --mx / --my, --rx / --ry, --pa and --edge from the pointer */
+.card {
+  transform: perspective(900px) rotateX(calc(var(--rx, 0deg) * .5)) rotateY(calc(var(--ry, 0deg) * .5));
+  transition: transform TRACK EASE, --pa TRACK EASE, --edge TRACK EASE;
+}
+` + HOLO(.3) + RING },
+
+    { group: "Combos", name: "Shop classic", desc: "Lift with a gentle image zoom.", ease: "cubic-bezier(.2, .8, .2, 1)", css: LIFT +
+`.media svg { transition: transform calc(var(--dur) * 1.6) EASE; }
+.cardHOVER .media svg { transform: scale(1.08); }` },
+
+    { group: "Combos", name: "Quick look", desc: "Lift, then the specs slide up.", ease: "cubic-bezier(.2, .8, .2, 1)", css: LIFT +
+`/* Specs wait a beat so the lift lands first */
+.specs {
+  opacity: 1;
+  transform: translateY(100%);
+  transition: transform var(--dur) EASE;
+}
+.cardHOVER .specs { transform: translateY(0); transition-delay: calc(var(--dur) * .35); }
+.media svg { transition: transform var(--dur) EASE; }
+.cardHOVER .media svg { transform: translateY(-14%); transition-delay: calc(var(--dur) * .35); }` },
+
+    { group: "Combos", name: "Full commit", desc: "Accent flood with an image zoom.", ease: "cubic-bezier(.2, .8, .2, 1)", css: FLOOD + `
+.media svg { transition: transform calc(var(--dur) * 1.6) EASE; }
+.cardHOVER .media svg { transform: scale(1.1); }` }
+  ];
+  EFFECTS.forEach((e) => { e.group ??= "Single"; });
+
+  /* ---------- Feel toggles ---------- */
+  const SWITCHES = [
+    { key: "asym", name: "Quick in, slow out", desc: "Responds fast on hover, lets go slowly." },
+    { key: "inertia", name: "Springy tracking", desc: "Pointer-driven motion carries momentum. Best with tilt, parallax or border follow." },
+    { key: "stagger", name: "Stagger", desc: "Image, then each line of text, move one after another." },
+    { key: "press", name: "Press", desc: "Cards squish slightly when clicked, then spring back." }
+  ];
+
+  /* ---------- Products ---------- */
+  const PRODUCTS = [
+    { name: "Halo Buds", tag: "New", price: "$149", blurb: "Wireless earbuds with adaptive noise cancelling.",
+      specs: ["32 hours with case", "Active noise cancelling", "IPX5 sweat resistant"], art: "buds" },
+    { name: "Keystone 75", tag: "Bestseller", price: "$189", blurb: "Compact mechanical keyboard with hot-swap switches.",
+      specs: ["Gasket-mounted plate", "Bluetooth, 2.4 GHz, USB-C", "Hot-swap switches"], art: "keys" },
+    { name: "Orbit Watch", tag: "Just restocked", price: "$249", blurb: "Fitness watch that tracks sleep, heart rate and runs.",
+      specs: ["7-day battery", "Built-in GPS", "Water resistant to 50 m"], art: "watch" },
+    { name: "Pulse Mini", tag: "Under $100", price: "$89", blurb: "Pocket speaker with room-filling 360° sound.",
+      specs: ["14 hours of playback", "Pairs with a second speaker", "Drop tested to 1.5 m"], art: "speaker" }
+  ];
+
+  const NS = "http://www.w3.org/2000/svg";
+  const ART = {
+    buds:
+      '<ellipse class="i" cx="100" cy="138" rx="52" ry="5" opacity=".12"/>' +
+      '<rect class="s k" x="52" y="74" width="96" height="58" rx="28"/>' +
+      '<path class="o" d="M57 93 H143"/>' +
+      '<circle class="a" cx="100" cy="114" r="3.5"/>' +
+      '<g transform="rotate(-16 80 48)"><rect class="a" x="73" y="46" width="14" height="40" rx="7"/><circle class="s k" cx="80" cy="44" r="17"/><circle class="b" cx="80" cy="44" r="8"/></g>' +
+      '<g transform="rotate(16 120 48)"><rect class="a" x="113" y="46" width="14" height="40" rx="7"/><circle class="s k" cx="120" cy="44" r="17"/><circle class="b" cx="120" cy="44" r="8"/></g>',
+    keys:
+      '<ellipse class="i" cx="100" cy="118" rx="84" ry="5" opacity=".12"/>' +
+      '<rect class="i" x="18" y="45" width="164" height="66" rx="10"/>' +
+      '<g class="keygrid"></g>',
+    watch:
+      '<rect class="b" x="80" y="6" width="40" height="138" rx="12"/>' +
+      '<rect class="i" x="64" y="40" width="72" height="72" rx="22"/>' +
+      '<rect class="a" x="135" y="66" width="7" height="16" rx="3"/>' +
+      '<g transform="rotate(-90 100 76)">' +
+        '<circle cx="100" cy="76" r="22" fill="none" stroke="#F7F7F7" stroke-opacity=".15" stroke-width="6"/>' +
+        '<circle cx="100" cy="76" r="22" fill="none" stroke="#E0E0E0" stroke-width="6" stroke-linecap="round" stroke-dasharray="100 200"/>' +
+        '<circle cx="100" cy="76" r="13" fill="none" stroke="#F7F7F7" stroke-opacity=".15" stroke-width="6"/>' +
+        '<circle cx="100" cy="76" r="13" fill="none" stroke="#9A9A9A" stroke-width="6" stroke-linecap="round" stroke-dasharray="52 200"/>' +
+      '</g>',
+    speaker:
+      '<ellipse class="i" cx="100" cy="139" rx="40" ry="5" opacity=".14"/>' +
+      '<rect class="a" x="62" y="20" width="76" height="114" rx="34"/>' +
+      '<g class="grille"></g>' +
+      '<circle class="s" cx="100" cy="76" r="17"/>' +
+      '<circle class="b" cx="100" cy="76" r="7"/>'
+  };
+
+  function buildArt(kind) {
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 200 150");
+    svg.setAttribute("class", "ill");
+    svg.setAttribute("aria-hidden", "true");
+    svg.innerHTML = ART[kind];
+    if (kind === "keys") {
+      let out = "";
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 12; c++) {
+          const x = 26 + c * 12.5, y = 53 + r * 12.5;
+          let w = 10.5, cls = "s";
+          // The bottom row's middle six keys draw as one space bar
+          if (r === 3 && c >= 3 && c <= 8) {
+            if (c !== 3) continue;
+            w = 6 * 12.5 - 2; cls = "b";
+          }
+          if ((r === 0 && c === 0) || (r === 2 && c === 11)) cls = "a";
+          out += '<rect class="' + cls + '" x="' + x + '" y="' + y + '" width="' + w + '" height="10.5" rx="2.5"/>';
+        }
+      }
+      svg.querySelector(".keygrid").innerHTML = out;
+    }
+    if (kind === "speaker") {
+      let dots = "";
+      for (let yy = 34; yy <= 122; yy += 8) {
+        for (let xx = 72; xx <= 128; xx += 8) {
+          const dx = xx - 100, dy = yy - 76;
+          if (Math.sqrt(dx * dx + dy * dy) < 23) continue;
+          if ((yy < 50 || yy > 104) && Math.abs(dx) > 22) continue;
+          dots += '<circle class="i" cx="' + xx + '" cy="' + yy + '" r="1.8" opacity=".3"/>';
+        }
+      }
+      svg.querySelector(".grille").innerHTML = dots;
+    }
+    return svg;
+  }
+
+  /* ---------- State ---------- */
+  const state = {
+    palette: 0, effect: 0, count: 3, speed: 1, ease: "default",
+    asym: false, inertia: false, stagger: false, press: false,
+    tab: "palette", palFilter: "all", fxGroup: "Single"
+  };
+  const FX_GROUP_NOUNS = { Single: "effects", Grid: "grid effects", Trails: "trails", Combos: "combos" };
+  const STORAGE_KEY = "card-hover-lab";
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      if (saved.palette >= 0 && saved.palette < PALETTES.length) state.palette = saved.palette;
+      if (saved.effect >= 0 && saved.effect < EFFECTS.length) state.effect = saved.effect;
+      if ([2, 3, 4].includes(saved.count)) state.count = saved.count;
+      if (saved.speed >= 0.25 && saved.speed <= 2.5) state.speed = saved.speed;
+      if (EASES.some((e) => e.id === saved.ease)) state.ease = saved.ease;
+      SWITCHES.forEach((s) => { state[s.key] = saved[s.key] === true; });
+      if (["palette", "effect", "motion"].includes(saved.tab)) state.tab = saved.tab;
+      if (["all", "light", "dark"].includes(saved.palFilter)) state.palFilter = saved.palFilter;
+      if (Object.hasOwn(FX_GROUP_NOUNS, saved.fxGroup)) state.fxGroup = saved.fxGroup;
+    }
+  } catch { /* Storage blocked or corrupt: the defaults stand */ }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* Storage blocked: settings last for this visit only */ }
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), grid = $("grid"), fxStyle = $("fx-style"), motionStyle = $("motion-style");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const isReduced = () => reducedMotion.matches;
+  const palShown = (p) => state.palFilter === "all" || (state.palFilter === "dark") === p.dark;
+
+  // Removing the class and forcing a reflow before re-adding it restarts the animation
+  function replayEntrance(el, delayMs) {
+    el.classList.remove("is-entering");
+    void el.offsetWidth;
+    el.style.animationDelay = delayMs + "ms";
+    el.classList.add("is-entering");
+  }
+
+  // Index that an arrow, Home or End key moves to among n items, or null for any other key
+  function keyTarget(key, i, n, vertical) {
+    const step = { ArrowRight: 1, ArrowLeft: -1, ...(vertical && { ArrowDown: 1, ArrowUp: -1 }) }[key];
+    if (step) return (i + step + n) % n;
+    if (key === "Home") return 0;
+    if (key === "End") return n - 1;
+    return null;
+  }
+
+  /* ---------- Tabs ---------- */
+  const tabs = document.querySelectorAll('[role="tab"]');
+  function showTab(name, focus) {
+    const changed = state.tab !== name;
+    state.tab = name;
+    tabs.forEach((t) => {
+      const on = t.dataset.tab === name;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      const panel = $("panel-" + t.dataset.tab);
+      panel.hidden = !on;
+      if (on && changed && !isReduced()) {
+        panel.querySelectorAll(".panel-tools, .sub-title, .opt:not([hidden]), .switch-row")
+          .forEach((el, n) => replayEntrance(el, Math.min(n * 18, 300)));
+      }
+      if (on && focus) t.focus();
+    });
+    save();
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => showTab(t.dataset.tab));
+    t.addEventListener("keydown", (ev) => {
+      const n = keyTarget(ev.key, i, tabs.length, false);
+      if (n === null) return;
+      ev.preventDefault();
+      showTab(tabs[n].dataset.tab, true);
+    });
+  });
+
+  /* ---------- Single-choice groups ----------
+     Lists and segmented filters follow the APG radio group pattern: one Tab stop,
+     arrow keys move and choose, Home and End jump to the ends. Options hidden by
+     a filter drop out of the arrow order. */
+  const radiosOf = (group) => [...group.querySelectorAll('[role="radio"]')];
+  function rove(group) {
+    const shown = radiosOf(group).filter((o) => !o.hidden);
+    const stop = shown.find((o) => o.getAttribute("aria-checked") === "true") || shown[0];
+    radiosOf(group).forEach((o) => { o.tabIndex = o === stop ? 0 : -1; });
+  }
+  function syncRadios(group, isChecked) {
+    radiosOf(group).forEach((o) => o.setAttribute("aria-checked", String(isChecked(o.dataset.value))));
+    rove(group);
+  }
+  function radioGroup(group, choose) {
+    group.addEventListener("click", (ev) => {
+      const opt = ev.target.closest('[role="radio"]');
+      if (opt) { choose(opt.dataset.value); apply(); }
+    });
+    group.addEventListener("keydown", (ev) => {
+      const shown = radiosOf(group).filter((o) => !o.hidden);
+      const n = keyTarget(ev.key, shown.indexOf(ev.target.closest('[role="radio"]')), shown.length, true);
+      if (n === null) return;
+      ev.preventDefault();
+      choose(shown[n].dataset.value);
+      apply();
+      shown[n].focus();
+    });
+  }
+  function addOption(list, value, name, desc, extra = "") {
+    const b = document.createElement("button");
+    const id = list.id + "-" + value;
+    b.type = "button"; b.className = "opt"; b.dataset.value = value;
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-labelledby", id + "-name");
+    b.setAttribute("aria-describedby", id + "-desc");
+    b.innerHTML = `<span><span class="opt-name" id="${id}-name">${name}</span><span class="opt-desc" id="${id}-desc">${desc}</span></span>${extra}`;
+    list.append(b);
+  }
+
+  const palList = $("palette-list"), fxList = $("effect-list"), easeList = $("ease-list");
+  PALETTES.forEach((p, i) => {
+    const dots = ["bg", "surface", "ink", "accent", "accent2"].map((k) => `<span style="background:${p[k]}"></span>`).join("");
+    addOption(palList, i, p.name, p.mood, `<span class="dots" aria-hidden="true">${dots}</span>`);
+  });
+  EFFECTS.forEach((e, i) => addOption(fxList, i, e.name, e.desc));
+  EASES.forEach((e) => {
+    const path = curvePath(e);
+    addOption(easeList, e.id, e.name, e.desc,
+      '<svg class="curve" viewBox="0 0 40 28" aria-hidden="true"><path class="base" d="M0 24 H40 M0 6 H40"/>' +
+      (path ? `<path d="${path}"/>` : '<path d="M2 22 L38 8" stroke-dasharray="3 3"/>') + "</svg>");
+  });
+  radioGroup(palList, (v) => { state.palette = +v; });
+  radioGroup($("pal-filter"), (v) => { state.palFilter = v; });
+  radioGroup(fxList, (v) => { state.effect = +v; });
+  radioGroup($("fx-filter"), (v) => { state.fxGroup = v; });
+  radioGroup(easeList, (v) => { state.ease = v; });
+  radioGroup($("count-seg"), (v) => { state.count = +v; });
+
+  /* ---------- Other controls ---------- */
+  const swWrap = $("switches");
+  SWITCHES.forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "switch-row";
+    row.innerHTML = `<div><span class="opt-name" id="sw-${s.key}">${s.name}</span><span class="opt-desc" id="sw-${s.key}-desc">${s.desc}</span></div>` +
+      `<button type="button" class="switch" role="switch" aria-labelledby="sw-${s.key}" aria-describedby="sw-${s.key}-desc" data-key="${s.key}"></button>`;
+    row.querySelector(".switch").addEventListener("click", () => { state[s.key] = !state[s.key]; apply(); });
+    swWrap.append(row);
+  });
+
+  $("speed").addEventListener("input", (ev) => { state.speed = +ev.target.value; apply(); });
+
+  const stageStatus = $("stage-status");
+  function stepPalette(dir) {
+    state.palette = (state.palette + dir + PALETTES.length) % PALETTES.length;
+    const p = PALETTES[state.palette];
+    if (!palShown(p)) state.palFilter = "all";
+    stageStatus.textContent = p.name + " palette";
+    apply();
+  }
+  function stepEffect(dir) {
+    state.effect = (state.effect + dir + EFFECTS.length) % EFFECTS.length;
+    const e = EFFECTS[state.effect];
+    state.fxGroup = e.group;
+    stageStatus.textContent = e.name + " effect";
+    apply();
+  }
+  $("prev-pal").addEventListener("click", () => stepPalette(-1));
+  $("next-pal").addEventListener("click", () => stepPalette(1));
+  $("prev-fx").addEventListener("click", () => stepEffect(-1));
+  $("next-fx").addEventListener("click", () => stepEffect(1));
+
+  reducedMotion.addEventListener("change", () => apply());
+
+  /* ---------- Pointer tracking (direct or springy) ---------- */
+  const UNITS = { rx: "deg", ry: "deg", mx: "%", my: "%", iy: "%", px: "", py: "", pa: "deg", edge: "" };
+  const KEYS = Object.keys(UNITS);
+  const TRACK_DEFAULTS = { rx: 0, ry: 0, mx: 50, my: 40, iy: 50, px: 0, py: 0, pa: 0, edge: 1 };
+  function initTrack() {
+    return { t: { ...TRACK_DEFAULTS }, c: { ...TRACK_DEFAULTS }, v: Object.fromEntries(KEYS.map((k) => [k, 0])) };
+  }
+  function writeTrack(card) {
+    const s = card._track;
+    KEYS.forEach(function (k) {
+      card.style.setProperty("--" + k, (Math.round(s.c[k] * 1000) / 1000) + UNITS[k]);
+    });
+  }
+  const springing = new Set();
+  let rafId = 0;
+  function tick() {
+    rafId = 0;
+    springing.forEach(function (card) {
+      const s = card._track;
+      let settled = true;
+      KEYS.forEach(function (k) {
+        // Percent and degree values move in larger units, so they settle at a looser threshold
+        const scale = (k === "mx" || k === "my" || k === "iy" || k === "pa") ? 100 : (k === "rx" || k === "ry") ? 10 : 1;
+        s.v[k] = s.v[k] * 0.8 + (s.t[k] - s.c[k]) * 0.1;
+        s.c[k] += s.v[k];
+        if (Math.abs(s.t[k] - s.c[k]) > 0.002 * scale || Math.abs(s.v[k]) > 0.002 * scale) settled = false;
+      });
+      if (settled) {
+        KEYS.forEach(function (k) { s.c[k] = s.t[k]; s.v[k] = 0; });
+        springing.delete(card);
+      }
+      writeTrack(card);
+    });
+    if (springing.size) rafId = requestAnimationFrame(tick);
+  }
+  function commit(card) {
+    const s = card._track;
+    if (state.inertia && !isReduced()) {
+      springing.add(card);
+      if (!rafId) rafId = requestAnimationFrame(tick);
+    } else {
+      KEYS.forEach(function (k) { s.c[k] = s.t[k]; s.v[k] = 0; });
+      writeTrack(card);
+    }
+  }
+
+  /* ---------- Sliding highlight + type shuffle ---------- */
+  const glidePad = (e) => e.glidePad ?? 12;
+  const glide = document.createElement("div");
+  glide.className = "glide";
+  glide.setAttribute("aria-hidden", "true");
+  grid.appendChild(glide);
+  let glideSlot = null;
+  function moveGlide(slot) {
+    const pad = glidePad(EFFECTS[state.effect]);
+    const vals = { gx: slot.offsetLeft - pad, gy: slot.offsetTop - pad, gw: slot.offsetWidth + pad * 2, gh: slot.offsetHeight + pad * 2 };
+    const appearing = !glide.classList.contains("is-on");
+    // A glide that is appearing jumps into place; one already showing slides
+    if (appearing) glide.style.transition = "none";
+    Object.entries(vals).forEach(([k, v]) => glide.style.setProperty("--" + k, v + "px"));
+    if (appearing) {
+      void glide.offsetWidth;
+      glide.style.transition = "";
+      glide.classList.add("is-on");
+    } else if (slot !== glideSlot) {
+      trackSoftness();
+    }
+    glideSlot = slot;
+  }
+  /* --soft follows the glide's measured speed each frame (0 settled, 1 fast), eased so it never jumps */
+  let soft = 0, softRaf = 0;
+  function trackSoftness() {
+    cancelAnimationFrame(softRaf);
+    let last = null, frames = 0;
+    function step(now) {
+      const r = glide.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const target = last ? Math.min(Math.hypot(x - last.x, y - last.y) / Math.max(now - last.t, 1) / 1.2, 1) : 0;
+      last = { x, y, t: now };
+      soft += (target - soft) * 0.25;
+      frames++;
+      if (frames < 4 || soft > 0.005 || target > 0.002) {
+        glide.style.setProperty("--soft", soft.toFixed(3));
+        softRaf = requestAnimationFrame(step);
+      } else {
+        soft = 0;
+        glide.style.setProperty("--soft", "0");
+      }
+    }
+    softRaf = requestAnimationFrame(step);
+  }
+  function hideGlide() {
+    glide.classList.remove("is-on");
+    cancelAnimationFrame(softRaf);
+    soft = 0;
+    glide.style.setProperty("--soft", "0");
+    glideSlot = null;
+  }
+  grid.addEventListener("pointerleave", function (ev) { if (ev.pointerType === "mouse") hideGlide(); });
+  grid.addEventListener("focusout", (ev) => { if (!grid.contains(ev.relatedTarget)) hideGlide(); });
+  window.addEventListener("resize", function () { if (glideSlot) moveGlide(glideSlot); });
+
+  function shuffleText(el, total) {
+    const final = el.dataset.text;
+    if (!final) return;
+    clearInterval(el._shuf);
+    const start = performance.now(), n = final.length;
+    const U = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", L = U.toLowerCase(), D = "0123456789";
+    el._shuf = setInterval(function () {
+      const t = performance.now() - start;
+      if (t >= total) { el.textContent = final; clearInterval(el._shuf); return; }
+      let out = "";
+      for (let i = 0; i < n; i++) {
+        const c = final[i], at = total * (0.3 + 0.7 * i / Math.max(n - 1, 1));
+        const pool = /[0-9]/.test(c) ? D : /[A-Z]/.test(c) ? U : /[a-z]/.test(c) ? L : null;
+        out += (t >= at || !pool) ? c : pool[Math.floor(Math.random() * pool.length)];
+      }
+      el.textContent = out;
+    }, 40);
+  }
+  function shuffleCard(card) {
+    const total = Math.round(700 * state.speed);
+    shuffleText(card.querySelector("h3"), total);
+    shuffleText(card.querySelector(".price"), Math.round(total * 0.8));
+  }
+  function restoreShuffle(card) {
+    card.querySelectorAll("[data-text]").forEach((el) => { clearInterval(el._shuf); el.textContent = el.dataset.text; });
+  }
+  function onCardEnter(card) {
+    const e = EFFECTS[state.effect];
+    if (e.glide) moveGlide(card.parentNode);
+    if (e.shuffle && !isReduced()) shuffleCard(card);
+  }
+
+  /* ---------- Build cards ---------- */
+  const cards = PRODUCTS.map(function (p) {
+    const card = document.createElement("article");
+    card.className = "card"; card.tabIndex = 0;
+    card.setAttribute("aria-label", p.name + ", " + p.price);
+    card._track = initTrack();
+    const media = document.createElement("div");
+    media.className = "media";
+    media.appendChild(buildArt(p.art));
+    const iris = document.createElement("div");
+    iris.className = "iris";
+    iris.setAttribute("aria-hidden", "true");
+    iris.appendChild(buildArt(p.art));
+    media.appendChild(iris);
+    const specs = document.createElement("ul");
+    specs.className = "specs";
+    specs.innerHTML = p.specs.map(function (s) { return "<li>" + s + "</li>"; }).join("");
+    media.appendChild(specs);
+    const body = document.createElement("div");
+    body.className = "body";
+    body.innerHTML =
+      '<span class="tag">' + p.tag + "</span>" +
+      "<h3>" + p.name + "</h3>" +
+      '<p class="muted">' + p.blurb + "</p>" +
+      '<div class="row"><span class="price">' + p.price + '</span><button type="button" class="buy">Add to cart</button></div>';
+    card.appendChild(media); card.appendChild(body);
+
+    const buy = body.querySelector(".buy");
+    buy.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      buy.textContent = "Added";
+      setTimeout(function () { buy.textContent = "Add to cart"; }, 1400);
+    });
+
+    card.addEventListener("pointermove", function (ev) {
+      const r = card.getBoundingClientRect(), t = card._track.t;
+      const x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height;
+      t.mx = x * 100; t.my = y * 100;
+      const mr = media.getBoundingClientRect();
+      t.iy = (ev.clientY - mr.top) / mr.height * 100;
+      t.px = (x - 0.5) * 2; t.py = (y - 0.5) * 2;
+      const tiltOn = EFFECTS[state.effect].tilt && !isReduced();
+      t.ry = tiltOn ? (x - 0.5) * 16 : 0;
+      t.rx = tiltOn ? (0.5 - y) * 16 : 0;
+      const pa = Math.atan2(y - 0.5, x - 0.5) * 180 / Math.PI + 90;
+      // Unwrapped, so a transition turns the short way round instead of back through 0
+      t.pa = t.pa + ((((pa - t.pa) % 360) + 540) % 360 - 180);
+      const d = Math.min(ev.clientX - r.left, r.right - ev.clientX, ev.clientY - r.top, r.bottom - ev.clientY);
+      const half = Math.min(r.width, r.height) / 2;
+      t.edge = 1 - Math.min(Math.max(d, 0) / half, 1);
+      commit(card);
+    });
+    card.addEventListener("pointerleave", function () {
+      const t = card._track.t;
+      t.rx = 0; t.ry = 0; t.px = 0; t.py = 0;
+      commit(card);
+    });
+    card.addEventListener("pointerdown", function (ev) {
+      if (ev.pointerType === "mouse") return;
+      const was = card.classList.contains("is-active");
+      cards.forEach(function (c) { c.classList.remove("is-active"); });
+      if (!was) { card.classList.add("is-active"); onCardEnter(card); } else { hideGlide(); }
+    });
+
+    body.querySelector("h3").dataset.text = p.name;
+    body.querySelector(".price").dataset.text = p.price;
+    card.addEventListener("pointerenter", function (ev) { if (ev.pointerType === "mouse") onCardEnter(card); });
+    card.addEventListener("focusin", function (ev) {
+      if (ev.relatedTarget && card.contains(ev.relatedTarget)) return;
+      onCardEnter(card);
+    });
+
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.appendChild(card);
+    grid.appendChild(slot);
+    writeTrack(card);
+    return card;
+  });
+
+  /* ---------- Copy helpers ---------- */
+  // The status region empties rather than resetting to the instruction, so only the feedback is announced
+  const hint = $("hint"), hintDefault = $("hint-default");
+  let hintTimer;
+  function say(msg) {
+    hint.textContent = msg;
+    hintDefault.hidden = true;
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { hint.textContent = ""; hintDefault.hidden = false; }, 2200);
+  }
+  function copyText(text, label) {
+    function fallback() {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
+      ta.remove();
+      say(ok ? "Copied " + label + "." : "Couldn’t copy automatically. Select the text and copy it by hand.");
+    }
+    // The Clipboard API is missing on insecure origins and can reject without permission
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => say("Copied " + label + "."), fallback);
+    } else {
+      fallback();
+    }
+  }
+  document.querySelectorAll(".copy").forEach((b) => {
+    const label = b.getAttribute("aria-label").replace(/^Copy /, "");
+    b.addEventListener("click", () => copyText($(b.dataset.copy).textContent, label));
+  });
+
+  /* ---------- Motion extras CSS ---------- */
+  function motionCSS(easeCss, durIn, durOut) {
+    const parts = [];
+    if (state.asym) parts.push(
+`/* Quick in, slow out */
+.stage { --dur: ${durOut}ms; --dur-in: ${durIn}ms; }
+.slot:has(> .cardHOVER) { --dur: var(--dur-in); }`);
+    if (state.inertia) parts.push(
+`/* Springy tracking runs in JS. Each frame, every tracked value
+   (--rx, --ry, --px, --py, --mx, --my, --pa, --edge) accelerates
+   toward the pointer's target and keeps some momentum:
+     velocity = velocity * 0.8 + (target - value) * 0.1;
+     value += velocity;
+   so it overshoots a touch and settles. CSS transitions on those
+   properties are set to 0ms so they don't add extra lag. */`);
+    if (state.stagger) parts.push(
+`/* Stagger: image, then each line of text, nudge up in turn */
+.card .body > * {
+  transition: translate var(--dur) ${easeCss}, color var(--dur) ease, background-color var(--dur) ease;
+}
+.cardHOVER .body > * { translate: 0 -3px; }
+.cardHOVER .media svg { transition-delay: calc(var(--dur) * .1); }
+.cardHOVER .body > :nth-child(2) { transition-delay: calc(var(--dur) * .08); }
+.cardHOVER .body > :nth-child(3) { transition-delay: calc(var(--dur) * .16); }
+.cardHOVER .body > :nth-child(4) { transition-delay: calc(var(--dur) * .24); }`);
+    if (state.press) parts.push(
+`/* Press: quick squish on click, springy release */
+.slot { transition: scale calc(var(--dur) * 1.4) cubic-bezier(.34, 1.56, .64, 1); }
+.slot:active { scale: .97; transition: scale 90ms ease-out; }`);
+    return parts.join("\n\n").split("HOVER").join(H);
+  }
+
+  /* ---------- Canvas trails ----------
+     Each trail is a standalone function: the code panel copies them as written. */
+  function readTrailColors(el) {
+    // Reads the palette's CSS variables, and whether the background is dark
+    const s = getComputedStyle(el);
+    function v(name) { return s.getPropertyValue(name).trim(); }
+    const n = parseInt(v("--bg").replace("#", ""), 16);
+    const lum = isNaN(n) ? 1 : (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+    return { a: v("--accent"), b: v("--accent2"), hot: v("--glow-hot") || v("--accent2"), dark: lum < 0.45 };
+  }
+
+  function makeTrailCanvas(host) {
+    // One canvas covering the host, sized for the screen's pixel density,
+    // with a frame loop that only runs while something is on screen
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;border-radius:inherit;";
+    host.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+    let w = 0, h = 0, raf = 0, last = 0, frame = null;
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = host.clientWidth; h = host.clientHeight;
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    const ro = new ResizeObserver(resize);
+    ro.observe(host);
+    resize();
+    function loop(now) {
+      const dt = Math.min((now - (last || now)) / 1000, 0.05); // seconds, capped after tab switches
+      last = now;
+      ctx.clearRect(0, 0, w, h);
+      if (frame(ctx, dt, w, h)) { raf = requestAnimationFrame(loop); }
+      else { raf = 0; last = 0; ctx.clearRect(0, 0, w, h); }
+    }
+    return {
+      canvas: canvas,
+      run: function (fn) { frame = fn; },
+      wake: function () { if (!raf && frame) raf = requestAnimationFrame(loop); },
+      toLocal: function (ev) {
+        const r = host.getBoundingClientRect();
+        return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+      },
+      rectOf: function (el) {
+        const r = host.getBoundingClientRect(), e = el.getBoundingClientRect();
+        return { x: e.left - r.left, y: e.top - r.top, w: e.width, h: e.height };
+      },
+      destroy: function () { cancelAnimationFrame(raf); ro.disconnect(); canvas.remove(); }
+    };
+  }
+
+  function sparkleTrail(host, colors) {
+    // Velocity-aware sparkles: how many spawn, how far they spread and how hard
+    // they're thrown all follow the pointer's speed. A still pointer makes none.
+    const tc = makeTrailCanvas(host), parts = [];
+    let last = null, carry = 0, c = colors();
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      if (!card) { last = null; return; }
+      const p = tc.toLocal(ev), now = performance.now();
+      if (!last) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+        last = { x: p.x, y: p.y, t: now, vx: 0, vy: 0 };
+        return;
+      }
+      const dt = Math.max(now - last.t, 1);
+      last.vx += ((p.x - last.x) / dt - last.vx) * 0.5; // px per ms, smoothed
+      last.vy += ((p.y - last.y) / dt - last.vy) * 0.5;
+      const speed = Math.hypot(last.vx, last.vy);
+      carry += Math.min(speed * 4, 8);
+      while (carry >= 1 && parts.length < 240) {
+        carry -= 1;
+        const k = Math.random(), spread = 30 + speed * 90, fling = 0.25 + Math.random() * 0.35;
+        parts.push({
+          x: last.x + (p.x - last.x) * k + (Math.random() - 0.5) * 6,
+          y: last.y + (p.y - last.y) * k + (Math.random() - 0.5) * 6,
+          vx: last.vx * 1000 * fling + (Math.random() - 0.5) * spread,
+          vy: last.vy * 1000 * fling + (Math.random() - 0.5) * spread - 20,
+          life: 0, max: 0.45 + Math.random() * 0.5,
+          size: 1.8 + Math.random() * 2.6 + Math.min(speed, 1.5),
+          star: Math.random() < 0.4, spin: Math.random() * Math.PI,
+          color: Math.random() < 0.5 ? c.a : c.b
+        });
+      }
+      last.x = p.x; last.y = p.y; last.t = now;
+      tc.wake();
+    }
+    function onLeave() { last = null; }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx, dt) {
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const s = parts[i];
+        s.life += dt;
+        if (s.life >= s.max) { parts.splice(i, 1); continue; }
+        const drag = Math.exp(-dt * 3);
+        s.vx *= drag;
+        s.vy = s.vy * drag + 140 * dt; // a little gravity
+        s.x += s.vx * dt; s.y += s.vy * dt;
+        const t = s.life / s.max, r = s.size * (1 - t * 0.6);
+        const twinkle = 0.7 + 0.3 * Math.sin(s.life * 28 + s.spin);
+        ctx.fillStyle = s.color;
+        if (c.dark) { // soft halo: light glows on dark backgrounds
+          ctx.globalAlpha = (1 - t) * 0.25;
+          ctx.beginPath(); ctx.arc(s.x, s.y, r * 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = (1 - t) * twinkle;
+        ctx.beginPath();
+        if (s.star) {
+          for (let j = 0; j < 8; j++) {
+            const ang = s.spin + j * Math.PI / 4, rad = j % 2 ? r * 0.45 : r * 2.4;
+            ctx.lineTo(s.x + Math.cos(ang) * rad, s.y + Math.sin(ang) * rad);
+          }
+          ctx.closePath();
+        } else {
+          ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        if (c.dark && s.star) { // a bright white core makes stars read as light
+          ctx.fillStyle = "#FFFFFF";
+          ctx.beginPath(); ctx.arc(s.x, s.y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      return parts.length > 0;
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  function lightPaintTrail(host, colors) {
+    // Light painting: a smooth, tapered ribbon through the pointer's recent path,
+    // drawn twice: a wide soft glow, then a bright core
+    const tc = makeTrailCanvas(host), strokes = [];
+    let open = null, c = colors();
+    const LIFE = 550, MAXW = 6; // ms a point lives; head width in px
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      if (!card) { open = null; return; }
+      const p = tc.toLocal(ev), now = performance.now();
+      if (!open) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+        open = { pts: [] };
+        strokes.push(open);
+      }
+      const lp = open.pts[open.pts.length - 1];
+      if (!lp || Math.hypot(p.x - lp.x, p.y - lp.y) > 2) open.pts.push({ x: p.x, y: p.y, t: now });
+      tc.wake();
+    }
+    function onLeave() { open = null; }
+    function smooth(pts) { // one round of Chaikin smoothing, keeping both ends
+      if (pts.length < 3) return pts;
+      const out = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25, t: a.t * 0.75 + b.t * 0.25 });
+        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75, t: a.t * 0.25 + b.t * 0.75 });
+      }
+      out.push(pts[pts.length - 1]);
+      return out;
+    }
+    function ribbon(ctx, pts, widths) { // one filled outline, so there are no seams
+      const L = [], R = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[Math.max(i - 1, 0)], b = pts[Math.min(i + 1, pts.length - 1)];
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, hw = widths[i] / 2;
+        L.push([pts[i].x - dy / len * hw, pts[i].y + dx / len * hw]);
+        R.push([pts[i].x + dy / len * hw, pts[i].y - dx / len * hw]);
+      }
+      ctx.beginPath();
+      [...L, ...R.reverse()].forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.closePath();
+      ctx.fill();
+      const head = pts.at(-1);
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, widths[widths.length - 1] / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx) {
+      const now = performance.now();
+      for (let s = strokes.length - 1; s >= 0; s--) {
+        const st = strokes[s];
+        while (st.pts.length && now - st.pts[0].t > LIFE) st.pts.shift();
+        if (!st.pts.length) { if (st !== open) strokes.splice(s, 1); continue; }
+        if (st.pts.length < 2) continue;
+        const pts = smooth(st.pts);
+        const widths = pts.map(function (q) {
+          const age = Math.min((now - q.t) / LIFE, 1);
+          return MAXW * Math.pow(1 - age, 1.3);
+        });
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = c.dark ? c.hot : c.b;
+        ribbon(ctx, pts, widths.map(function (w) { return w * 3.2; }));
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = c.dark ? "#FFFFFF" : c.a;
+        ribbon(ctx, pts, widths);
+      }
+      ctx.globalAlpha = 1;
+      return strokes.some(function (st) { return st.pts.length > 0; });
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  function pixelTrail(host, colors) {
+    // Pixel glow: each card is a grid of small cells. Cells near the pointer
+    // light up, then fade out over FADE seconds.
+    const tc = makeTrailCanvas(host), grids = new Map();
+    let last = null, c = colors();
+    const CELL = 14, GAP = 2, REACH = CELL * 2.4, FADE = 0.9;
+    function paint(card, cx, cy) {
+      let g = grids.get(card);
+      if (!g) { g = new Map(); grids.set(card, g); }
+      const col0 = Math.floor(cx / CELL), row0 = Math.floor(cy / CELL);
+      for (let dc = -3; dc <= 3; dc++) {
+        for (let dr = -3; dr <= 3; dr++) {
+          const col = col0 + dc, row = row0 + dr;
+          if (col < 0 || row < 0 || col * CELL > card.offsetWidth || row * CELL > card.offsetHeight) continue;
+          const heat = 1 - Math.hypot((col + 0.5) * CELL - cx, (row + 0.5) * CELL - cy) / REACH;
+          const key = col + "," + row;
+          if (heat > 0 && (g.get(key) || 0) < heat) g.set(key, heat);
+        }
+      }
+    }
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      if (!card) { last = null; return; }
+      const r = tc.rectOf(card), p = tc.toLocal(ev), cx = p.x - r.x, cy = p.y - r.y;
+      if (!last || last.card !== card) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+        last = { card: card, x: cx, y: cy };
+      }
+      const steps = Math.max(1, Math.ceil(Math.hypot(cx - last.x, cy - last.y) / 5)); // no gaps on fast moves
+      for (let i = 1; i <= steps; i++) paint(card, last.x + (cx - last.x) * i / steps, last.y + (cy - last.y) * i / steps);
+      last.x = cx; last.y = cy;
+      tc.wake();
+    }
+    function onLeave() { last = null; }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx, dt) {
+      let any = false;
+      grids.forEach(function (g, card) {
+        if (!g.size) return;
+        const r = tc.rectOf(card);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, 18); else ctx.rect(r.x, r.y, r.w, r.h);
+        ctx.clip();
+        g.forEach(function (heat, key) {
+          heat -= dt / FADE;
+          if (heat <= 0) { g.delete(key); return; }
+          g.set(key, heat);
+          any = true;
+          const cr = key.split(",");
+          ctx.globalAlpha = heat * (c.dark ? 0.8 : 0.5);
+          ctx.fillStyle = heat > 0.55 ? c.a : c.b;
+          ctx.fillRect(r.x + cr[0] * CELL + GAP / 2, r.y + cr[1] * CELL + GAP / 2, CELL - GAP, CELL - GAP);
+        });
+        ctx.restore();
+      });
+      ctx.globalAlpha = 1;
+      return any;
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  function confettiTrail(host, colors) {
+    // Confetti: a burst from "Add to cart" with gravity, air drag, flutter,
+    // and pieces that flip in 3D (the back side is a little darker)
+    const tc = makeTrailCanvas(host), bits = [];
+    function onClick(ev) {
+      const btn = ev.target.closest ? ev.target.closest(".buy") : null;
+      if (!btn) return;
+      const c = colors(), r = tc.rectOf(btn), mix = [c.a, c.b, c.hot, c.a, c.b];
+      for (let i = 0; i < 90 && bits.length < 400; i++) {
+        const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.9, sp = 380 + Math.random() * 520;
+        bits.push({
+          x: r.x + r.w / 2 + (Math.random() - 0.5) * r.w * 0.6, y: r.y + r.h / 2,
+          vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+          w: 5 + Math.random() * 6, h: 3 + Math.random() * 4,
+          rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 12,
+          flip: Math.random() * Math.PI * 2, vf: 6 + Math.random() * 10,
+          color: mix[Math.floor(Math.random() * mix.length)],
+          life: 0, max: 1.6 + Math.random()
+        });
+      }
+      tc.wake();
+    }
+    host.addEventListener("click", onClick, true);
+    tc.run(function (ctx, dt, w, h) {
+      for (let i = bits.length - 1; i >= 0; i--) {
+        const b = bits[i];
+        b.life += dt;
+        if (b.life > b.max || b.y > h + 20) { bits.splice(i, 1); continue; }
+        const drag = Math.exp(-dt * 1.6);
+        b.vx = b.vx * drag + Math.sin(b.life * 5 + b.flip) * 30 * dt; // flutter
+        b.vy = b.vy * drag + 1100 * dt; // gravity
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        b.rot += b.vr * dt; b.flip += b.vf * dt;
+        const face = Math.cos(b.flip), fade = Math.min(1, (b.max - b.life) / 0.4);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        ctx.scale(1, face);
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = b.color;
+        ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+        if (face < 0) {
+          ctx.globalAlpha = fade * 0.25;
+          ctx.fillStyle = "#000";
+          ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+        }
+        ctx.restore();
+      }
+      return bits.length > 0;
+    });
+    return function stop() {
+      host.removeEventListener("click", onClick, true);
+      tc.destroy();
+    };
+  }
+
+  function cometTrail(host, colors) {
+    // Comet: a star-like head chases the pointer, and its tail is the head's own
+    // recent path. The head is layered like light through a lens (numbered below).
+    const tc = makeTrailCanvas(host), sparks = [];
+    let c = colors(), head = null, target = null, over = false, vis = 0, spd = 0, hist = [];
+    const TAIL = 260, R = 5; // ms of path kept in the tail; base size unit in px
+    const SPIKES = [
+      { ang: Math.PI / 2, len: 17, w: 0.7, a: 0.85 }, // down: the long ray
+      { ang: -Math.PI / 2, len: 9, w: 0.6, a: 0.75 },
+      { ang: 0, len: 10, w: 0.6, a: 0.75 },
+      { ang: Math.PI, len: 10, w: 0.6, a: 0.75 },
+      { ang: Math.PI / 4, len: 4.5, w: 0.45, a: 0.5, diag: true },
+      { ang: 3 * Math.PI / 4, len: 4.5, w: 0.45, a: 0.5, diag: true },
+      { ang: -Math.PI / 4, len: 4.5, w: 0.45, a: 0.5, diag: true },
+      { ang: -3 * Math.PI / 4, len: 4.5, w: 0.45, a: 0.5, diag: true }
+    ];
+    const HALOS = [ // radius (in R), opacity, spin speed, arc length, phase
+      { r: 4.2, a: 0.24, spin: 0.6, arc: 4.4, ph: 0 },
+      { r: 6.8, a: 0.15, spin: -0.35, arc: 3.2, ph: 2.1 },
+      { r: 10, a: 0.1, spin: 0.22, arc: 2.4, ph: 4.2 }
+    ];
+    const GHOSTS = [ // orbit radius, size, spin, phase, how far motion pushes it back, opacity
+      { r: 7, size: 0.9, spin: 0.5, ph: 0.4, lag: 0.015, a: 0.24 },
+      { r: 12, size: 1.5, spin: -0.3, ph: 2.6, lag: 0.025, a: 0.14 },
+      { r: 16, size: 0.6, spin: 0.18, ph: 4.4, lag: 0.035, a: 0.22 }
+    ];
+    let mist = null, mistKey = "", mistPos = null; // nebula sprites, and where the mist sits
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      over = !!card;
+      if (!card) return;
+      const p = tc.toLocal(ev);
+      if (!head || vis < 0.02) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+        head = { x: p.x, y: p.y };
+        hist = [];
+        mistPos = null;
+        const key = c.a + c.b + c.hot + c.dark;
+        if (key !== mistKey) { // paint two nebula sprites once per palette
+          mistKey = key;
+          mist = { a: makeNebula(280, 7), b: makeNebula(220, 31) };
+        }
+      }
+      target = p;
+      tc.wake();
+    }
+    function onLeave() { over = false; }
+    function glowDisc(ctx, x, y, r, col, a) { // soft radial glow, color fading to clear
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, col);
+      g.addColorStop(1, col + "00");
+      ctx.globalAlpha = a;
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    function ray(ctx, x, y, ang, len, w, col, a) { // tapered spike fading toward its tip
+      const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
+      const g = ctx.createLinearGradient(x, y, ex, ey);
+      g.addColorStop(0, col);
+      g.addColorStop(1, col + "00");
+      const nx = -Math.sin(ang) * w / 2, ny = Math.cos(ang) * w / 2;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x + nx, y + ny); ctx.lineTo(ex, ey); ctx.lineTo(x - nx, y - ny);
+      ctx.closePath();
+      ctx.fill();
+    }
+    function makeNebula(size, seed) {
+      // A soft cloud painted once onto its own canvas: overlapping colored puffs,
+      // a dusting of faint specks, and an edge that fades to nothing
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = size;
+      const g = cv.getContext("2d"), half = size / 2;
+      let s = seed, i;
+      function rand() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }
+      const cols = c.dark ? [c.hot, c.a, "#FF8AB0", "#8DB6FF"] : [c.a, c.b];
+      g.globalCompositeOperation = "lighter";
+      for (i = 0; i < 16; i++) {
+        const ang = rand() * Math.PI * 2, dist = Math.pow(rand(), 0.7) * size * 0.3;
+        const bx = half + Math.cos(ang) * dist, by = half + Math.sin(ang) * dist, br = size * (0.08 + rand() * 0.16);
+        const col = cols[Math.floor(rand() * cols.length)];
+        const rg = g.createRadialGradient(bx, by, 0, bx, by, br);
+        rg.addColorStop(0, col + "33");
+        rg.addColorStop(1, col + "00");
+        g.fillStyle = rg;
+        g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+      }
+      g.fillStyle = c.dark ? "#FFFFFF" : c.a;
+      for (i = 0; i < 26; i++) {
+        const da = rand() * Math.PI * 2, dd = Math.pow(rand(), 0.8) * size * 0.34;
+        g.globalAlpha = 0.15 + rand() * 0.45;
+        g.beginPath(); g.arc(half + Math.cos(da) * dd, half + Math.sin(da) * dd, 0.4 + rand() * 0.8, 0, Math.PI * 2); g.fill();
+      }
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = "destination-in";
+      const m = g.createRadialGradient(half, half, 0, half, half, half);
+      m.addColorStop(0, "#000");
+      m.addColorStop(0.5, "#000");
+      m.addColorStop(1, "#0000");
+      g.fillStyle = m;
+      g.fillRect(0, 0, size, size);
+      return cv;
+    }
+    function ribbon(ctx, pts, widths) {
+      const L = [], R2 = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[Math.max(i - 1, 0)], b = pts[Math.min(i + 1, pts.length - 1)];
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, hw = widths[i] / 2;
+        L.push([pts[i].x - dy / len * hw, pts[i].y + dx / len * hw]);
+        R2.push([pts[i].x + dy / len * hw, pts[i].y - dx / len * hw]);
+      }
+      ctx.beginPath();
+      [...L, ...R2.reverse()].forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.closePath();
+      ctx.fill();
+    }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx, dt) {
+      if (!head) return false;
+      const now = performance.now(), px = head.x, py = head.y;
+      vis += ((over ? 1 : 0) - vis) * (1 - Math.exp(-dt * 10)); // fade in and out
+      const k = 1 - Math.exp(-dt * 16); // how quickly the head catches up
+      head.x += (target.x - head.x) * k;
+      head.y += (target.y - head.y) * k;
+      const vx = (head.x - px) / Math.max(dt, 0.001), vy = (head.y - py) / Math.max(dt, 0.001);
+      const speed = Math.hypot(vx, vy);
+      hist.push({ x: head.x, y: head.y, t: now });
+      while (hist.length && now - hist[0].t > TAIL) hist.shift();
+      if (speed > 300 && Math.random() < Math.min(speed / 2500, 0.7)) { // shed sparks when fast
+        sparks.push({ x: head.x, y: head.y, vx: -vx * 0.15 + (Math.random() - 0.5) * 90, vy: -vy * 0.15 + (Math.random() - 0.5) * 90, life: 0, max: 0.3 + Math.random() * 0.35 });
+      }
+      const t = now / 1000, x = head.x, y = head.y;
+      spd += (Math.min(speed / 1400, 1) - spd) * (1 - Math.exp(-dt * 6)); // smoothed 0 to 1
+      const calm = 1 - spd * 0.5; // the star is fullest when the comet rests
+      const glowCol = c.dark ? c.hot : c.b, coreCol = c.dark ? "#FFFFFF" : c.a;
+      const tints = c.dark ? ["#FF8AB0", "#8CFFD8", "#8DB6FF"] : [c.a, c.b, c.a];
+      ctx.globalCompositeOperation = c.dark ? "lighter" : "source-over"; // light adds up on dark
+
+      // 0. Nebula: two slowly turning clouds that trail behind the star. The
+      //    outer one lags the most, the inner one sits between, for depth.
+      if (!mistPos) mistPos = { x: x, y: y };
+      const mk = 1 - Math.exp(-dt * 2.5);
+      mistPos.x += (x - mistPos.x) * mk;
+      mistPos.y += (y - mistPos.y) * mk;
+      if (mist) {
+        const breathe = 1 + 0.04 * Math.sin(t * 0.7);
+        [[mist.a, 300, t * 0.05, 0.5, 0], [mist.b, 210, -t * 0.08, 0.4, 0.5]].forEach(function (m) {
+          const mx = mistPos.x + (x - mistPos.x) * m[4], my = mistPos.y + (y - mistPos.y) * m[4];
+          const d = m[1] * breathe;
+          ctx.save();
+          ctx.translate(mx, my);
+          ctx.rotate(m[2]);
+          ctx.globalAlpha = m[3] * vis * (c.dark ? 1 : 0.5);
+          ctx.drawImage(m[0], -d / 2, -d / 2, d, d);
+          ctx.restore();
+        });
+      }
+
+      // 1. Tail
+      if (hist.length > 2) {
+        const n = hist.length, end = hist[0];
+        [[3.4, 0.25, glowCol], [1, 0.9, coreCol]].forEach(function (pass) {
+          const g = ctx.createLinearGradient(end.x, end.y, x, y);
+          g.addColorStop(0, pass[2] + "00");
+          g.addColorStop(1, pass[2]);
+          ctx.fillStyle = g;
+          ctx.globalAlpha = pass[1] * vis;
+          ribbon(ctx, hist, hist.map(function (q, i) { return R * 2 * pass[0] * Math.pow(i / (n - 1), 1.1); }));
+        });
+      }
+
+      // 2. Bloom: a wide soft glow, then a hot inner glow
+      glowDisc(ctx, x, y, R * 11, glowCol, 0.3 * vis * calm);
+      glowDisc(ctx, x, y, R * 3.2, coreCol, 0.55 * vis);
+
+      // 3. Refraction halos: thin partial rings split into three tints, drifting
+      //    around the star at their own pace and lagging slightly behind motion
+      const hx = x - vx * 0.012, hy = y - vy * 0.012;
+      ctx.lineWidth = 1.2;
+      HALOS.forEach(function (h) {
+        const rr = R * h.r * (1 + 0.05 * Math.sin(t * 1.3 + h.ph)), start = t * h.spin + h.ph;
+        for (let j = 0; j < 3; j++) {
+          ctx.strokeStyle = tints[j];
+          ctx.globalAlpha = h.a * vis * calm;
+          ctx.beginPath();
+          ctx.arc(hx, hy, rr + (j - 1) * 1.6, start + j * 0.12, start + j * 0.12 + h.arc);
+          ctx.stroke();
+        }
+      });
+
+      // 4. Flare ghosts: small soft discs orbiting slowly, pushed back by motion
+      GHOSTS.forEach(function (g, i) {
+        const ang = t * g.spin + g.ph;
+        glowDisc(ctx, x + Math.cos(ang) * R * g.r - vx * g.lag, y + Math.sin(ang) * R * g.r - vy * g.lag,
+          R * g.size, tints[i % 3], g.a * vis * calm);
+      });
+
+      // 5. Diffraction spikes, each shimmering slightly
+      SPIKES.forEach(function (s, i) {
+        const len = R * s.len * (1 + 0.08 * Math.sin(t * 3.1 + i * 1.7)) * (0.8 + 0.2 * calm);
+        ray(ctx, x, y, s.ang, len, R * s.w, s.diag ? glowCol : coreCol, s.a * vis * calm);
+      });
+
+      // 6. Core
+      ctx.globalAlpha = vis;
+      ctx.fillStyle = coreCol;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.75, 0, Math.PI * 2); ctx.fill();
+
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.life += dt;
+        if (s.life >= s.max) { sparks.splice(i, 1); continue; }
+        s.x += s.vx * dt; s.y += s.vy * dt;
+        ctx.globalAlpha = (1 - s.life / s.max) * 0.9;
+        ctx.fillStyle = glowCol;
+        ctx.beginPath(); ctx.arc(s.x, s.y, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      return over || vis > 0.01 || sparks.length > 0;
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  function snowTrail(host, colors) {
+    // Settling snow: flakes drift down from the pointer while it's over a card,
+    // land along the card's bottom edge, pile up a little, then melt away.
+    const tc = makeTrailCanvas(host), cards = new Map();
+    let c = colors(), hover = null, carry = 0;
+    const BUCKET = 6; // px width of each column of the pile
+    function stateFor(card) {
+      let s = cards.get(card);
+      if (!s) { s = { flakes: [], heights: [] }; cards.set(card, s); }
+      return s;
+    }
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      if (!card) { hover = null; return; }
+      const r = tc.rectOf(card), p = tc.toLocal(ev);
+      if (!hover || hover.card !== card) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+      }
+      hover = { card: card, x: p.x - r.x, y: p.y - r.y };
+      tc.wake();
+    }
+    function onLeave() { hover = null; }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx, dt) {
+      let any = false;
+      if (hover) { // keeps snowing while the pointer rests on a card
+        const hs = stateFor(hover.card);
+        carry += dt * 26;
+        while (carry >= 1 && hs.flakes.length < 220) {
+          carry -= 1;
+          hs.flakes.push({
+            x: hover.x + (Math.random() - 0.5) * 36, y: hover.y + (Math.random() - 0.5) * 16,
+            vy: 15 + Math.random() * 20, size: 1.2 + Math.random() * 2.2, phase: Math.random() * Math.PI * 2,
+            landed: false, hold: 1 + Math.random() * 1.2, melt: 0, life: 0
+          });
+        }
+        any = true;
+      }
+      cards.forEach(function (s, card) {
+        if (!s.flakes.length) return;
+        any = true;
+        const r = tc.rectOf(card), W = card.offsetWidth, floor = card.offsetHeight - 3;
+        const maxB = Math.ceil(W / BUCKET);
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, 18); else ctx.rect(r.x, r.y, r.w, r.h);
+        ctx.clip();
+        ctx.fillStyle = c.dark ? "#FFFFFF" : c.b;
+        for (let i = s.flakes.length - 1; i >= 0; i--) {
+          const f = s.flakes[i];
+          f.life += dt;
+          if (!f.landed) {
+            f.vy = Math.min(f.vy + 120 * dt, 60 + f.size * 12); // gentle terminal speed
+            f.x += Math.sin(f.life * 2.2 + f.phase) * 18 * dt; // sway
+            f.y += f.vy * dt;
+            const b = Math.max(0, Math.min(Math.floor(f.x / BUCKET), maxB));
+            const rest = floor - (s.heights[b] || 0) - f.size;
+            if (f.y >= rest) {
+              f.y = rest; f.landed = true; f.bucket = b;
+              s.heights[b] = (s.heights[b] || 0) + f.size * 1.2;
+            }
+          } else if ((f.hold -= dt) <= 0) {
+            f.melt += dt / 0.8;
+            if (f.melt >= 1) {
+              s.heights[f.bucket] = Math.max(0, (s.heights[f.bucket] || 0) - f.size * 1.2);
+              s.flakes.splice(i, 1);
+              continue;
+            }
+          }
+          ctx.globalAlpha = 0.9 * (1 - f.melt) * Math.min(1, f.life / 0.2);
+          ctx.beginPath();
+          ctx.arc(r.x + f.x, r.y + f.y, f.size * (1 - f.melt * 0.6), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+      ctx.globalAlpha = 1;
+      return any;
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  function containedTrail(host, colors) {
+    // Contained particles: the card is a glass box. Particles thrown from the
+    // pointer bounce off its walls and are gently pulled toward the pointer while
+    // it's inside. Once it leaves, they drop to the bottom and fade.
+    const tc = makeTrailCanvas(host), cards = new Map();
+    let c = colors(), last = null, carry = 0;
+    function onMove(ev) {
+      const card = ev.target.closest ? ev.target.closest(".card") : null;
+      if (!card) { last = null; return; }
+      const r = tc.rectOf(card), p = tc.toLocal(ev), x = p.x - r.x, y = p.y - r.y, now = performance.now();
+      if (!last || last.card !== card) {
+        c = colors();
+        tc.canvas.style.mixBlendMode = c.dark ? "screen" : "multiply";
+        last = { card: card, x: x, y: y, t: now, vx: 0, vy: 0 };
+        tc.wake();
+        return;
+      }
+      const dt = Math.max(now - last.t, 1);
+      last.vx += ((x - last.x) / dt - last.vx) * 0.5; // px per ms, smoothed
+      last.vy += ((y - last.y) / dt - last.vy) * 0.5;
+      const speed = Math.hypot(last.vx, last.vy);
+      let list = cards.get(card);
+      if (!list) { list = []; cards.set(card, list); }
+      carry += Math.min(speed * 2.5, 5);
+      while (carry >= 1 && list.length < 160) {
+        carry -= 1;
+        list.push({
+          x: x, y: y,
+          vx: last.vx * 600 + (Math.random() - 0.5) * 160, vy: last.vy * 600 + (Math.random() - 0.5) * 160,
+          size: 2 + Math.random() * 2.5, life: 0, max: 1.8 + Math.random() * 1.2,
+          color: Math.random() < 0.5 ? c.a : c.b
+        });
+      }
+      last.x = x; last.y = y; last.t = now;
+      tc.wake();
+    }
+    function onLeave() { last = null; }
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+    tc.run(function (ctx, dt) {
+      let any = false;
+      cards.forEach(function (list, card) {
+        if (!list.length) return;
+        any = true;
+        const r = tc.rectOf(card), W = card.offsetWidth, H = card.offsetHeight, pull = last && last.card === card;
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, 18); else ctx.rect(r.x, r.y, r.w, r.h);
+        ctx.clip();
+        for (let i = list.length - 1; i >= 0; i--) {
+          const p = list[i];
+          p.life += dt;
+          if (p.life >= p.max) { list.splice(i, 1); continue; }
+          if (pull) { // a soft spring toward the pointer keeps them swirling
+            p.vx += (last.x - p.x) * 3 * dt;
+            p.vy += (last.y - p.y) * 3 * dt;
+          } else {
+            p.vy += 500 * dt; // pointer gone: they fall
+          }
+          const drag = Math.exp(-dt * 0.8);
+          p.vx *= drag; p.vy *= drag;
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          const m = p.size + 3; // bounce off the walls, losing a little energy
+          if (p.x < m) { p.x = m; p.vx = Math.abs(p.vx) * 0.8; }
+          if (p.x > W - m) { p.x = W - m; p.vx = -Math.abs(p.vx) * 0.8; }
+          if (p.y < m) { p.y = m; p.vy = Math.abs(p.vy) * 0.8; }
+          if (p.y > H - m) { p.y = H - m; p.vy = -Math.abs(p.vy) * 0.6; }
+          const fade = Math.min(1, (p.max - p.life) / 0.6) * Math.min(1, p.life / 0.15);
+          ctx.fillStyle = p.color;
+          if (c.dark) {
+            ctx.globalAlpha = fade * 0.25;
+            ctx.beginPath(); ctx.arc(r.x + p.x, r.y + p.y, p.size * 2.6, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.globalAlpha = fade * 0.9;
+          ctx.beginPath(); ctx.arc(r.x + p.x, r.y + p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      });
+      ctx.globalAlpha = 1;
+      return any;
+    });
+    return function stop() {
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      tc.destroy();
+    };
+  }
+
+  const TRAILS = { sparkle: sparkleTrail, paint: lightPaintTrail, pixel: pixelTrail, confetti: confettiTrail,
+    comet: cometTrail, snow: snowTrail, contained: containedTrail };
+  let activeTrail = { name: null, stop: null };
+  function dedent(fn) {
+    return fn.toString().split("\n").map(function (l, i) { return i ? l.replace(/^  /, "") : l; }).join("\n");
+  }
+
+  /* ---------- JavaScript for the code panel ---------- */
+  const JS_EXPR = {
+    rx: "(0.5 - y) * 16", ry: "(x - 0.5) * 16",
+    mx: "x * 100", my: "y * 100",
+    iy: "(e.clientY - m.top) / m.height * 100",
+    px: "(x - 0.5) * 2", py: "(y - 0.5) * 2",
+    pa: "unwrap(card, Math.atan2(y - 0.5, x - 0.5) * 180 / Math.PI + 90)",
+    edge: "edgeCloseness(e, r)"
+  };
+  const UNWRAP_JS =
+`// Keeps the angle continuous so it never spins the long way around
+function unwrap(card, angle) {
+  const prev = card._pa ?? angle;
+  card._pa = prev + ((((angle - prev) % 360) + 540) % 360 - 180);
+  return card._pa;
+}`;
+  const EDGE_JS =
+`// 0 at the center of the card, 1 right at its edge
+function edgeCloseness(e, r) {
+  const d = Math.min(e.clientX - r.left, r.right - e.clientX, e.clientY - r.top, r.bottom - e.clientY);
+  return 1 - Math.min(Math.max(d, 0) / (Math.min(r.width, r.height) / 2), 1);
+}`;
+  const WRITE_JS =
+`function write(card, vals) {
+  for (const k in vals) card.style.setProperty("--" + k, vals[k] + UNITS[k]);
+}`;
+  const SPRING_JS =
+`// Springy tracking: each value chases its target and keeps some momentum
+const DEFAULTS = DEFAULTS_HERE;
+const springs = new Map();
+
+function write(card, targets) {
+  if (reduceMotion.matches) {
+    for (const k in targets) card.style.setProperty("--" + k, targets[k] + UNITS[k]);
+    return;
+  }
+  let s = springs.get(card);
+  if (!s) springs.set(card, (s = { cur: { ...DEFAULTS }, tgt: { ...DEFAULTS }, vel: {}, running: false }));
+  Object.assign(s.tgt, targets);
+  if (!s.running) {
+    s.running = true;
+    requestAnimationFrame(() => step(card, s));
+  }
+}
+
+function step(card, s) {
+  let moving = false;
+  for (const k in s.tgt) {
+    s.vel[k] = (s.vel[k] ?? 0) * 0.8 + (s.tgt[k] - s.cur[k]) * 0.1;
+    s.cur[k] += s.vel[k];
+    if (Math.abs(s.tgt[k] - s.cur[k]) > 0.01 || Math.abs(s.vel[k]) > 0.01) moving = true;
+    card.style.setProperty("--" + k, s.cur[k] + UNITS[k]);
+  }
+  if (moving) requestAnimationFrame(() => step(card, s));
+  else s.running = false;
+}`;
+  const GLIDE_JS =
+`// Sliding highlight: one .glide element in the grid follows the hovered card
+const grid = document.querySelector(".grid");
+const glide = document.createElement("div");
+glide.className = "glide";
+glide.setAttribute("aria-hidden", "true");
+grid.prepend(glide);
+let current = null;
+
+function moveGlide(slot) {
+  const pad = 12;
+  const appearing = !glide.classList.contains("is-on");
+  if (appearing) glide.style.transition = "none"; // appear in place instead of flying in
+  glide.style.setProperty("--gx", slot.offsetLeft - pad + "px");
+  glide.style.setProperty("--gy", slot.offsetTop - pad + "px");
+  glide.style.setProperty("--gw", slot.offsetWidth + pad * 2 + "px");
+  glide.style.setProperty("--gh", slot.offsetHeight + pad * 2 + "px");
+  if (appearing) {
+    glide.offsetWidth; // apply the jump before re-enabling transitions
+    glide.style.transition = "";
+    glide.classList.add("is-on");
+  } else if (slot !== current) {
+    trackSoftness();
+  }
+  current = slot;
+}
+
+// --soft follows the glide's measured speed each frame (0 settled, 1 fast),
+// eased so it never jumps
+let soft = 0;
+let softRaf = 0;
+function trackSoftness() {
+  cancelAnimationFrame(softRaf);
+  let last = null;
+  let frames = 0;
+  const tick = (now) => {
+    const r = glide.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const speed = last ? Math.hypot(x - last.x, y - last.y) / Math.max(now - last.t, 1) : 0; // px per ms
+    const target = Math.min(speed / 1.2, 1);
+    last = { x, y, t: now };
+    soft += (target - soft) * 0.25;
+    frames++;
+    if (frames < 4 || soft > 0.005 || target > 0.002) {
+      glide.style.setProperty("--soft", soft.toFixed(3));
+      softRaf = requestAnimationFrame(tick);
+    } else {
+      soft = 0;
+      glide.style.setProperty("--soft", "0");
+    }
+  };
+  softRaf = requestAnimationFrame(tick);
+}
+
+function hideGlide() {
+  glide.classList.remove("is-on");
+  cancelAnimationFrame(softRaf);
+  soft = 0;
+  glide.style.setProperty("--soft", "0");
+  current = null;
+}
+
+grid.querySelectorAll(".slot").forEach((slot) => {
+  slot.addEventListener("pointerenter", () => moveGlide(slot));
+  slot.addEventListener("focusin", () => moveGlide(slot));
+});
+grid.addEventListener("pointerleave", hideGlide);
+grid.addEventListener("focusout", (e) => {
+  if (!grid.contains(e.relatedTarget)) hideGlide();
+});`;
+  const SHUFFLE_JS =
+`// Type shuffle: characters scramble, then resolve left to right
+const POOLS = { digit: "0123456789", upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", lower: "abcdefghijklmnopqrstuvwxyz" };
+
+function shuffle(el, duration) {
+  const text = (el.dataset.text ??= el.textContent);
+  clearInterval(el._timer);
+  const start = performance.now();
+  el._timer = setInterval(() => {
+    const t = performance.now() - start;
+    if (t >= duration) {
+      el.textContent = text;
+      clearInterval(el._timer);
+      return;
+    }
+    el.textContent = [...text].map((c, i) => {
+      const at = duration * (0.3 + 0.7 * i / Math.max(text.length - 1, 1));
+      const pool = /[0-9]/.test(c) ? POOLS.digit : /[A-Z]/.test(c) ? POOLS.upper : /[a-z]/.test(c) ? POOLS.lower : null;
+      return t >= at || !pool ? c : pool[Math.floor(Math.random() * pool.length)];
+    }).join("");
+  }, 40);
+}
+
+document.querySelectorAll(".card").forEach((card) => {
+  card.addEventListener("pointerenter", () => {
+    if (reduceMotion.matches) return;
+    shuffle(card.querySelector("h3"), 700);
+    shuffle(card.querySelector(".price"), 560);
+  });
+});`;
+  const TOUCH_JS =
+`// Touch screens: tap a card to show its hover state (.is-active)
+document.querySelectorAll(".card").forEach((card) => {
+  card.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
+    const was = card.classList.contains("is-active");
+    document.querySelectorAll(".card.is-active").forEach((c) => c.classList.remove("is-active"));
+    if (!was) card.classList.add("is-active");
+  });
+});`;
+
+  /* Appended to the copied effect CSS. `!important` outranks the inline --rx / --ry the pointer
+     tracking writes, so tilt rests flat without a change to the copied JavaScript. */
+  const REDUCED_MOTION_CSS =
+`/* Reduced motion: every change happens at once, and nothing moves with the pointer */
+@media (prefers-reduced-motion: reduce) {
+  .grid *, .grid *::before, .grid *::after {
+    transition-duration: 0s !important;
+    animation: none !important;
+  }
+  .card { --rx: 0deg !important; --ry: 0deg !important; }
+  .card .media svg, .card .body { translate: none !important; }
+}`;
+
+  function trackingJS(used, springy) {
+    const rest = used.filter((k) => ["rx", "ry", "px", "py"].includes(k));
+    const out = [
+      "// Pointer tracking: writes the pointer position to CSS variables on each card",
+      "const UNITS = { " + used.map(function (k) { return k + ': "' + UNITS[k] + '"'; }).join(", ") + " };"
+    ];
+    if (rest.length) out.push("const REST = { " + rest.map(function (k) { return k + ": 0"; }).join(", ") + " }; // where values return when the pointer leaves");
+    if (used.includes("pa")) out.push("", UNWRAP_JS);
+    if (used.includes("edge")) out.push("", EDGE_JS);
+    out.push("", springy
+      ? SPRING_JS.split("DEFAULTS_HERE").join("{ " + used.map((k) => k + ": " + TRACK_DEFAULTS[k]).join(", ") + " }")
+      : WRITE_JS);
+    out.push(
+      "",
+      'document.querySelectorAll(".card").forEach((card) => {',
+      '  card.addEventListener("pointermove", (e) => {',
+      "    const r = card.getBoundingClientRect();",
+      "    const x = (e.clientX - r.left) / r.width;  // 0 at left, 1 at right",
+      "    const y = (e.clientY - r.top) / r.height;  // 0 at top, 1 at bottom"
+    );
+    if (used.includes("iy")) out.push('    const m = card.querySelector(".media").getBoundingClientRect();');
+    out.push("    write(card, {");
+    used.forEach(function (k) { out.push("      " + k + ": " + JS_EXPR[k] + ","); });
+    out.push("    });", "  });");
+    if (rest.length) out.push('  card.addEventListener("pointerleave", () => write(card, REST));');
+    out.push("});");
+    return out.join("\n");
+  }
+  function jsCode(e, code) {
+    const used = KEYS.filter((k) => code.includes("var(--" + k));
+    const springy = state.inertia && used.length > 0;
+    const parts = [];
+    if (springy || e.shuffle || e.trail) parts.push('const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");');
+    if (used.length) parts.push(trackingJS(used, springy));
+    if (e.glide) parts.push(GLIDE_JS.split("const pad = 12;").join("const pad = " + glidePad(e) + ";"));
+    if (e.shuffle) parts.push(SHUFFLE_JS);
+    if (e.trail) {
+      const fn = TRAILS[e.trail];
+      parts.push("// Canvas trail: two small helpers, then the trail itself\n" +
+        [readTrailColors, makeTrailCanvas, fn].map(dedent).join("\n\n") +
+        "\n\n// The stage must be position: relative so the canvas can cover it\n" +
+        "const stage = document.querySelector(\".stage\");\n" +
+        "if (!reduceMotion.matches) " + fn.name + "(stage, () => readTrailColors(stage));");
+    }
+    parts.push(TOUCH_JS);
+    return "// Markup: .grid > .slot > .card, with .media and .body inside each card\n\n" + parts.join("\n\n");
+  }
+
+  /* ---------- Apply ---------- */
+  function filterList(list, key, show) {
+    if (list._key === key) return;
+    const first = list._key === undefined;
+    list._key = key;
+    function swap() {
+      list.classList.remove("is-leaving");
+      let n = 0;
+      radiosOf(list).forEach((b) => {
+        b.hidden = !show(b.dataset.value);
+        if (b.hidden || first || isReduced()) b.classList.remove("is-entering");
+        else replayEntrance(b, Math.min(n++ * 20, 260));
+      });
+      rove(list);
+    }
+    clearTimeout(list._t);
+    if (first || isReduced()) { swap(); return; }
+    list.classList.add("is-leaving");
+    list._t = setTimeout(swap, 140);
+  }
+  function apply() {
+    const p = PALETTES[state.palette], e = EFFECTS[state.effect];
+    const easeOpt = EASES.find((x) => x.id === state.ease);
+    const easeCss = easeOpt.css || e.ease;
+    const base = Math.round(320 * state.speed * (easeOpt.durScale || 1));
+    const durIn = Math.round(base * 0.6), durOut = Math.round(base * 1.8);
+    const track = (state.inertia && !isReduced()) ? "0ms" : "calc(var(--dur) * .6)";
+
+    // Palette tokens
+    TOKENS.forEach(function (t) { stage.style.setProperty(cssVar(t[0]), p[t[0]]); });
+    const aDarker = luminance(p.accent) <= luminance(p.accent2);
+    const glowBase = aDarker ? p.accent : p.accent2, glowHot = aDarker ? p.accent2 : p.accent;
+    stage.style.setProperty("--glow-base", glowBase);
+    stage.style.setProperty("--glow-hot", glowHot);
+    stage.style.setProperty("--dur", (state.asym ? durOut : base) + "ms");
+    stage.style.setProperty("--dur-in", durIn + "ms");
+    grid.style.setProperty("--n", state.count);
+
+    // Effect + motion CSS
+    const code = e.css.split("HOVER").join(H).split("EASE").join(easeCss).split("TRACK").join(track);
+    fxStyle.textContent = code;
+    if (!e.glide) hideGlide();
+    cards.forEach(restoreShuffle);
+    const trail = isReduced() ? null : e.trail ?? null;
+    if (activeTrail.name !== trail) {
+      activeTrail.stop?.();
+      activeTrail = { name: trail, stop: trail && TRAILS[trail](stage, () => readTrailColors(stage)) };
+    }
+    const mcode = motionCSS(easeOpt.css || "cubic-bezier(.2, .8, .2, 1)", durIn, durOut);
+    motionStyle.textContent = mcode;
+
+    cards.forEach(function (c, i) {
+      c.parentNode.hidden = i >= state.count;
+      const s = c._track;
+      s.t.rx = s.t.ry = s.c.rx = s.c.ry = 0;
+      writeTrack(c);
+    });
+
+    // Lists and controls
+    syncRadios(palList, (v) => +v === state.palette);
+    syncRadios($("pal-filter"), (v) => v === state.palFilter);
+    filterList(palList, state.palFilter, (v) => palShown(PALETTES[+v]));
+    $("pal-count").textContent = PALETTES.filter(palShown).length + " palettes";
+
+    const inGroup = (fx) => fx.group === state.fxGroup;
+    syncRadios(fxList, (v) => +v === state.effect);
+    syncRadios($("fx-filter"), (v) => v === state.fxGroup);
+    filterList(fxList, state.fxGroup, (v) => inGroup(EFFECTS[+v]));
+    $("fx-count").textContent = EFFECTS.filter(inGroup).length + " " + FX_GROUP_NOUNS[state.fxGroup];
+
+    syncRadios(easeList, (v) => v === state.ease);
+    const en = $("ease-note");
+    en.hidden = !(e.noEase && state.ease !== "default");
+    en.textContent = en.hidden ? "" : e.name + " loops at a constant speed, so easing doesn’t change it.";
+
+    swWrap.querySelectorAll(".switch").forEach((b) => b.setAttribute("aria-checked", String(state[b.dataset.key])));
+    syncRadios($("count-seg"), (v) => +v === state.count);
+    const speed = $("speed");
+    speed.value = state.speed;
+    speed.setAttribute("aria-valuetext", state.speed + " times");
+    $("speed-val").textContent = state.speed + "×";
+    $("rm-note").hidden = !isReduced();
+
+    // Stage heading
+    $("stage-title").textContent = p.name;
+    const feel = SWITCHES.filter(function (s) { return state[s.key]; }).map(function (s) { return s.name.toLowerCase(); });
+    $("stage-sub").textContent = p.mood + " palette, " + e.name.toLowerCase() + " effect, " +
+      (state.ease === "default" ? "default easing" : easeOpt.name.toLowerCase() + " easing") +
+      (feel.length ? ", plus " + feel.join(", ") : "");
+
+    // Swatches
+    const sw = $("swatches");
+    sw.innerHTML = "";
+    TOKENS.forEach(function (t) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "swatch";
+      b.setAttribute("aria-label", "Copy " + t[1] + " " + p[t[0]]);
+      b.innerHTML = '<span class="chip" style="background:' + p[t[0]] + '"></span><span class="meta"><b>' + t[1] + "</b><code>" + p[t[0]] + "</code></span>";
+      b.addEventListener("click", function () { copyText(p[t[0]], t[1].toLowerCase() + " " + p[t[0]]); });
+      sw.appendChild(b);
+    });
+
+    // Code panels
+    $("pal-code").textContent =
+      ".theme-" + p.name.toLowerCase().replace(/\s+/g, "-") + " {\n" +
+      TOKENS.map(function (t) { return "  " + cssVar(t[0]) + ": " + p[t[0]] + ";"; }).join("\n") +
+      "\n  --glow-base: " + glowBase + ";\n  --glow-hot: " + glowHot + ";" +
+      "\n  --line: color-mix(in srgb, var(--ink) 14%, transparent);\n  --media: #E4E4E4;\n  --dur: " + base + "ms;\n}";
+    $("fx-code").textContent = code + "\n\n" + REDUCED_MOTION_CSS;
+    $("motion-code").textContent = mcode || "/* No motion extras on. Turn some on in the Motion tab. */";
+    $("js-code").textContent = jsCode(e, code);
+
+    save();
+  }
+
+  showTab(state.tab);
+  apply();
+})();
+</script>
+</body>
+</html>

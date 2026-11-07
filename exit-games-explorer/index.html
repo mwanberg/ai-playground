@@ -957,16 +957,20 @@
     .tray .btn--primary { margin-inline-start: auto; white-space: nowrap; }
   }
 
-  /* Dialog shell, shared by Details and Compare */
+  /* Dialog shell, shared by Details and Compare. Details scrolls as a whole under its sticky title bar, so no
+     part of it takes its height from the rest. */
   .details {
     inline-size: min(var(--dialog-max), 100% - 2 * var(--inset));
     max-block-size: min(54rem, 100dvh - 2 * var(--inset));
     padding: 0; border: 0; border-radius: var(--radius-m);
     background: var(--color-surface); color: var(--color-ink);
     box-shadow: var(--shadow-dialog);
-    overflow: hidden;
+    overflow-y: auto; overscroll-behavior: contain;
   }
-  .details[open] { display: flex; flex-direction: column; }
+  .details:not(.details--compare) .bar--head {
+    position: sticky; inset-block-start: 0;
+    border-block-end: 1px solid var(--color-line);
+  }
   /* The scrim is the dialogs' backdrop; the native one stays clear, since a view transition cannot give it a layer of its own */
   .details::backdrop, .sheet::backdrop { background: transparent; }
   .scrim {
@@ -978,8 +982,8 @@
     .scrim { transition: opacity var(--motion-base) linear; }
   }
 
-  /* Bars and panes: every panel that scrolls between a header and a footer (Details, the
-     Filters panel, the sheet) shares the compare table's treatment. The bars sit on the block's
+  /* Bars and panes: every panel that scrolls between a header and a footer (the Filters panel,
+     the sheet) shares the compare table's treatment. The bars sit on the block's
      own surface; where scroll-driven animations are supported, a shadow fades in under the
      header once content scrolls beneath it, and a shadow above the footer shows while more
      content waits below. */
@@ -991,7 +995,7 @@
   }
   .bar--foot { padding: var(--gap-row) var(--inset) var(--gap-stack); }
   .pane { overflow-y: auto; flex: 1; min-block-size: 0; overscroll-behavior: contain; scroll-timeline: --pane y; }
-  /* A focused scroll area (Details' is in the Tab order; Firefox adds the others) sits in a block that clips, so its ring is drawn inside its edge */
+  /* A focused scroll area (Firefox puts these in the Tab order) sits in a block that clips, so its ring is drawn inside its edge */
   .pane:focus-visible { outline-offset: calc(-1 * var(--focus-width)); }
   .has-pane { timeline-scope: --pane; }
   .bar--head::after, .bar--foot::before {
@@ -1010,54 +1014,45 @@
   }
 
   /* Details: the meta line, a deck, the facts in a row between hairlines, then the story on the
-     left and the review lists and ratings on the right, then the actions in a footer */
-  /* Details sits on a 12-column grid with the page's gutter. The head and the opening are subgrids,
-     so the photo, the deck and the sections beneath all start and end on the same lines. */
+     left and the review lists and ratings on the right, then the actions */
+  /* Story and reviews split 7:5; the head and the actions row repeat that split, so their columns line up */
   .details-main {
-    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     column-gap: var(--gutter); row-gap: var(--gap-section);
     padding: var(--gap-tight) var(--inset) var(--inset);
   }
-  .details-head { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; row-gap: var(--gap-stack); }
-  /* With a photo, the opening is set beside its 3 columns; without one it spans the full width */
-  /* The opening is as tall as the photo, the deck's row takes the slack, so the fact row ends level with the photo */
-  .details-opening { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; grid-template-rows: auto 1fr auto; row-gap: var(--gap-stack); min-inline-size: 0; }
-  .details-opening > * { grid-column: 1 / -1; }
-  .details-head:has(.details-stage) .details-opening { grid-column: 4 / -1; }
-  .details-stage { grid-column: 1 / span 3; aspect-ratio: 1; align-self: start; position: relative; }
+  .details-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-stack) var(--gutter); }
+  /* With a photo, the opening sits beside it at three times its width */
+  .details-head:has(.details-stage) { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+  /* The opening stretches to the photo's height and the deck's row takes the slack, so the fact row ends level with the photo */
+  .details-opening { display: grid; grid-template-rows: auto 1fr auto; row-gap: var(--gap-stack); min-inline-size: 0; }
+  .details-stage { aspect-ratio: 1; align-self: start; position: relative; }
   .details-opening .card-meta { justify-content: flex-start; gap: var(--gap-tight) var(--gap-row); }
   .details .dialog-title { min-inline-size: 0; }
-  /* Without a photo the deck spans the description's 7 columns, so the two align; beside a photo it spans the opening */
-  .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / span 7; }
+  /* Without a photo the deck keeps the story's measure */
+  .details-head:not(:has(.details-stage)) .bottom-line { max-inline-size: 62ch; }
   .details .facts {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--gap-row) var(--gap-stack);
     padding-block: var(--gap-stack); border-block: 1px solid var(--color-line);
   }
   .details .facts .fact { flex: 0 1 auto; }
   .section { display: grid; gap: var(--gap-tight); align-content: start; }
-  /* The publisher description, the optional notes and the themes over the left 7 columns */
-  .section--story { grid-column: 1 / span 7; display: grid; gap: var(--gap-section); align-content: start; }
-  /* The ratings, then the review lists, over the right 5; a hairline closes the ratings */
-  .details-aside { grid-column: 8 / -1; display: grid; gap: var(--gap-section); align-content: start; }
+  /* The publisher description, the optional notes and the themes on the left */
+  .section--story { grid-column: 1; display: grid; gap: var(--gap-section); align-content: start; }
+  /* The ratings, then the review lists, on the right; a hairline closes the ratings */
+  .details-aside { grid-column: 2; display: grid; gap: var(--gap-section); align-content: start; }
   .section--ratings { padding-block-end: var(--gap-group); border-block-end: 1px solid var(--color-line); }
-  /* The actions end the content and stick to the pane's bottom edge, on the body's columns: Where
-     to buy over the story, the BoardGameGeek link and Compare over the reviews, level with the
-     store links. Its margins reach the dialog's edges, and its padding restores the inset, so its
-     tracks match the body's. */
+  /* The actions end the content: Where to buy under the story, the BoardGameGeek link and Compare under
+     the reviews, level with the store links */
   .details-actions {
-    grid-column: 1 / -1; position: sticky; inset-block-end: 0;
-    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); align-items: start;
-    margin: 0 calc(-1 * var(--inset)) calc(-1 * var(--inset));
+    grid-column: 1 / -1;
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); column-gap: var(--gutter); align-items: start;
+    padding-block-start: var(--gap-section); border-block-start: 1px solid var(--color-line);
   }
-  /* Short windows: the actions end the content, so the pane keeps room to scroll */
-  @media (height <= 30rem) {
-    .details-actions { position: static; }
-    .details-actions::before { display: none; }
-  }
-  .section--buy { grid-column: 1 / span 7; }
+  .section--buy { grid-column: 1; }
   /* Its top padding clears the Where to buy label and the gap under it, so its line sits level with the store links */
   .details-more {
-    grid-column: 8 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-section);
+    grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-section);
     padding-block-start: calc(var(--leading-label) + var(--gap-tight));
   }
   /* Compare keeps to the line's end when the line wraps, so its toggletip, which reaches back from there, stays in the dialog */
@@ -1109,9 +1104,7 @@
     .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
     .section--story, .details-aside { grid-column: 1 / -1; }
-    /* Phones: the actions are not sticky; they end the content, stacked, a section's gap further down than the sections above */
-    .details-actions { position: static; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); margin: var(--gap-section) 0 0; padding: 0; }
-    .details-actions::before { display: none; }
+    .details-actions { grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); }
     .section--buy, .details-more { grid-column: 1 / -1; }
     .details-more { padding-block-start: 0; }
   }
@@ -1121,7 +1114,10 @@
      Where scroll-driven animations are supported, shadows add depth cues: one under the
      header once the rows scroll beneath it, one beside the labels once the games scroll
      beneath them, and one at each far edge while more content waits there. */
-  .details--compare { --dialog-max: 72rem; }
+  /* Compare scrolls in its table area, not as a whole, so its header row and label column can stick. The dialog's
+     height is fixed, which gives that area a definite height rather than one derived from the table. */
+  .details--compare { --dialog-max: 72rem; block-size: min(54rem, 100dvh - 2 * var(--inset)); overflow: hidden; }
+  .details--compare[open] { display: flex; flex-direction: column; }
   .compare-frame { --label-col: 9rem; --game-col-min: 12rem; position: relative; flex: 1; min-block-size: 0; display: flex; }
   .compare-scroll {
     overflow: auto; flex: 1; overscroll-behavior: contain;
@@ -1221,6 +1217,8 @@
   @keyframes shadow-out { from { opacity: 1; } to { opacity: 0; } }
 
   @media (width <= 44rem) {
+    /* Full screen, as Details is; the shell's phone rule comes before Compare's fixed height, so it is restated here */
+    .details--compare { block-size: 100dvh; }
     /* Wide enough for the longest label word, "Difficulty", inside the dialog's inset */
     .compare-frame { --label-col: 6.25rem; }
     /* Two games fit, and a sliver of the next one peeks in to show there is more */
@@ -1554,15 +1552,14 @@
   <p class="visually-hidden" id="sheet-status" role="status"></p>
 </dialog>
 
-<dialog class="details has-pane" id="details" aria-labelledby="d-title">
+<dialog class="details" id="details" aria-labelledby="d-title">
   <div class="bar bar--head">
     <h2 class="dialog-title" id="d-title"></h2>
     <form method="dialog"><button class="btn" type="submit">Close</button></form>
   </div>
-  <div class="pane" id="d-pane" tabindex="0" role="region" aria-label="Game details">
-    <div class="details-main" id="d-main"></div>
-  </div>
+  <!-- Ahead of the content: the scrolling dialog would otherwise reach the hidden status's 1px box past the content's end -->
   <p class="visually-hidden" id="d-status" role="status"></p>
+  <div class="details-main" id="d-main"></div>
 </dialog>
 
 <dialog class="details details--compare" id="compare" aria-labelledby="c-title">
@@ -2674,7 +2671,7 @@
           <ul>${game.watchOut.map((text) => `<li>${icon("i-triangle")}${esc(text)}</li>`).join("")}</ul>
         </section>` : ""}
       </div>
-      <div class="bar bar--foot details-actions">
+      <div class="details-actions">
         <section class="section section--buy">
           <h3 class="section-title">Where to buy</h3>
           ${storesHtml(game)}
@@ -2691,7 +2688,7 @@
   }
   /* A closed dialog is not laid out, so a scroll set then is lost and the browser restores the last one on opening;
      Details opening from closed scrolls to the top again once shown */
-  const toDetailsTop = () => { $("d-pane").scrollTop = 0; };
+  const toDetailsTop = () => { details.scrollTop = 0; };
 
   /* The dialog opens on the game; when the filters hide it they are cleared first, unless `keepFilters` is set */
   function openDetails(item, push, keepFilters = false) {
@@ -2755,7 +2752,7 @@
     dialog.addEventListener("touchstart", (event) => {
       const touch = event.touches[0];
       gesture = event.touches.length === 1 && enabled()
-        ? { x: touch.clientX, y: touch.clientY, atTop: !pane.contains(event.target) || pane.scrollTop <= 0, pulling: null, offset: 0, last: null, prev: null }
+        ? { x: touch.clientX, y: touch.clientY, atTop: Boolean(event.target.closest(".bar")) || !pane.contains(event.target) || pane.scrollTop <= 0, pulling: null, offset: 0, last: null, prev: null }
         : null;
     }, { passive: true });
     dialog.addEventListener("touchmove", (event) => {
@@ -2797,7 +2794,7 @@
   }
   /* The stylesheet's breakpoint where Details fills the screen; the sheet opens only on narrow screens */
   const fullScreenDetails = matchMedia("(width <= 44rem)");
-  pullToClose(details, $("d-pane"), () => fullScreenDetails.matches);
+  pullToClose(details, details, () => fullScreenDetails.matches);
   pullToClose(sheet, $("sheet-pane"), () => true);
 
   /* A game opened by an address change has no history entry the page pushed, so closing it does not go back */

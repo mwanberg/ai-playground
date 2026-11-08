@@ -91,7 +91,9 @@
     --leading-label: 1rem;
     --text-label: 0.75rem / var(--leading-label);
     --text-meta: 0.875rem / 1.25rem;
-    --text-value: 1rem / 1.25rem;
+    /* The value's line height, which the store links' target padding is measured from */
+    --leading-value: 1.25rem;
+    --text-value: 1rem / var(--leading-value);
     --text-body: 1rem / 1.5rem;
     --text-deck: 1.25rem / 1.75rem;
     --text-name: 1.5rem / 1.875rem;
@@ -134,6 +136,9 @@
     --grid-tracks: repeat(24, minmax(0, 1fr));
     --gutter: var(--space-6);
     --dialog-max: 64rem;
+    /* The window's height, for dialogs, the sheet and the panel. dvh tracks a phone's browser bars as
+       they show and hide; browsers without it take vh. */
+    --viewport-block: 100vh;
     --card-min: 19rem;
     --target-min: 2.75rem;
     --target-compact: 2rem;
@@ -167,87 +172,123 @@
     --motion-glide: 520ms;
     --motion-ease-glide: cubic-bezier(0.25, 1.06, 0.4, 1);
 
-    /* Each color is a light and dark pair; the page's color scheme picks one.
+    /* Colors, light; the dark blocks below override them.
        Neutrals take the hue of the box art's dominant deep blue. Every surface is the ground, a block on it, or the Filters panel's recessed surface. */
-    --color-bg: light-dark(#E4EAEF, #0C1620);
-    --color-surface: light-dark(#FFFFFF, #152331);
+    --color-bg: #E4EAEF;
+    --color-surface: #FFFFFF;
     /* The recessed panel: halfway from the ground to a block, so the cards are the only full blocks beside it */
-    --color-panel: light-dark(#F2F5F7, #111D29);
-    --color-ink: light-dark(#13212C, #E9F0F4);
-    --color-ink-muted: light-dark(#374A59, #AFC0CC);
+    --color-panel: #F2F5F7;
+    --color-ink: #13212C;
+    --color-ink-muted: #374A59;
     /* Disabled controls: a grey well below the text floor on purpose, so "off" reads as off */
-    --color-disabled: light-dark(#8B919D, #6B7484);
-    --color-line: light-dark(#D0DAE2, #263A4B);
+    --color-disabled: #8B919D;
+    --color-line: #D0DAE2;
     /* Borders of controls: the 3:1 non-text floor */
-    --color-control-line: light-dark(#6A7F8F, #6F879A);
+    --color-control-line: #6A7F8F;
     /* Clickable: the teal of the EXIT logo plate, as text and as fills. Every control wears it; nothing else does. */
-    --color-accent: light-dark(#006179, #7CCBDB);
-    --color-accent-strong: light-dark(#00485E, #A8E0EA);
-    --color-on-accent: light-dark(#FFFFFF, #0C1620);
+    --color-accent: #006179;
+    --color-accent-strong: #00485E;
+    --color-on-accent: #FFFFFF;
     /* A hovered filter option's text, at 7:1 on the recessed panel; dark mode takes the glow, since its
        stronger teal sits too near the white labels to read as a change */
-    --color-option-hover: light-dark(#00485E, #7CCBDB);
+    --color-option-hover: #00485E;
     /* Attention: the orange of the kids' age tag and the covers' warm light, for facts worth noticing
        (difficulty, rating), as marks and tints, and as text only in the BGG label's --color-meaning-ink */
-    --color-meaning: light-dark(#D2692E, #E89048);
+    --color-meaning: #D2692E;
     /* The same orange, deeper, for the star on the rating badge's tint: the 3:1 non-text floor on the tint */
-    --color-meaning-strong: light-dark(#A9531F, #F0A866);
-    --color-meaning-soft: light-dark(#FBE3CC, #3D2716);
+    --color-meaning-strong: #A9531F;
+    --color-meaning-soft: #FBE3CC;
     /* The BGG label on the badge's tint, at 7:1 there: a burnt orange in light; in dark a faded warm white, as dim as the
        other labels and well under the score's white */
-    --color-meaning-ink: light-dark(#713612, #CCBAA9);
+    --color-meaning-ink: #713612;
     /* The card light: a shadow in the box art's deep blue in light, a neon a step brighter and more saturated
        than the logo's cyan in dark. Its core and the edge's bright spot are layered over these colors, so their
        values are what they add. Dark mode alone draws the hovered card's edge. */
-    --color-card-light: light-dark(rgb(33 59 75 / 0.24), rgb(56 214 240 / 0.45));
-    --color-card-light-core: light-dark(rgb(33 59 75 / 0.21), rgb(120 228 246 / 0.55));
-    --color-card-edge: light-dark(transparent, rgb(124 203 219 / 0.2));
-    --color-card-edge-bright: light-dark(transparent, rgb(120 228 246 / 0.8));
-    --color-backdrop: light-dark(rgb(21 26 38 / 0.55), rgb(5 8 14 / 0.75));
-    --color-shadow: light-dark(rgb(21 26 38 / 0.16), rgb(0 0 0 / 0.6));
-    --shadow-tray: 0 -0.5rem 1.5rem light-dark(rgb(21 26 38 / 0.1), rgb(0 0 0 / 0.4));
-    /* Dark mode deepens the shadow and adds a hairline edge, since a shadow barely shows on a dark ground */
-    --shadow-dialog: 0 1.5rem 3rem light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.7)), 0 0 0 1px light-dark(transparent, var(--color-line));
+    --color-card-light: rgb(33 59 75 / 0.24);
+    --color-card-light-core: rgb(33 59 75 / 0.21);
+    --color-card-edge: transparent;
+    --color-card-edge-bright: transparent;
+    --color-backdrop: rgb(21 26 38 / 0.55);
+    --color-shadow: rgb(21 26 38 / 0.16);
+    --shadow-tray: 0 -0.5rem 1.5rem rgb(21 26 38 / 0.1);
+    --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.35);
     --shadow-strip: 0.625rem;
     --shadow-ramp: 1.5rem;
 
     color-scheme: light dark;
+  }
+  @supports (height: 100dvh) {
+    :root { --viewport-block: 100dvh; }
   }
 
   /* The footer's theme switch forces one scheme; System leaves the device setting in charge */
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; }
 
-  /* Light text on a dark ground reads heavier, so dark mode sets each weight a step lighter.
-     The display weight stays at 200, the lightest the loaded font offers. */
-  :root[data-theme="dark"] { --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670; }
+  /* Dark mode, chosen on the switch or by the device under System. The two rules carry the same values, since
+     a selector cannot test the device setting. Light text on a dark ground reads heavier, so each weight is a
+     step lighter; the display weight stays at 200, the lightest the loaded font offers. The dialog's shadow
+     deepens and gains a hairline edge, since a shadow barely shows on a dark ground. The theme tests sit in
+     :where(), so these rules weigh the same as :root and the more-contrast rules below win by coming later. */
+  :root:where([data-theme="dark"]) {
+    --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670;
+    --color-bg: #0C1620; --color-surface: #152331; --color-panel: #111D29;
+    --color-ink: #E9F0F4; --color-ink-muted: #AFC0CC; --color-disabled: #6B7484;
+    --color-line: #263A4B; --color-control-line: #6F879A;
+    --color-accent: #7CCBDB; --color-accent-strong: #A8E0EA; --color-on-accent: #0C1620; --color-option-hover: #7CCBDB;
+    --color-meaning: #E89048; --color-meaning-strong: #F0A866; --color-meaning-soft: #3D2716; --color-meaning-ink: #CCBAA9;
+    --color-card-light: rgb(56 214 240 / 0.45); --color-card-light-core: rgb(120 228 246 / 0.55);
+    --color-card-edge: rgb(124 203 219 / 0.2); --color-card-edge-bright: rgb(120 228 246 / 0.8);
+    --color-backdrop: rgb(5 8 14 / 0.75); --color-shadow: rgb(0 0 0 / 0.6);
+    --shadow-tray: 0 -0.5rem 1.5rem rgb(0 0 0 / 0.4);
+    --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.7), 0 0 0 1px var(--color-line);
+  }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670; }
+    :root:where(:not([data-theme="light"])) {
+      --weight-light: 270; --weight-regular: 370; --weight-semibold: 570; --weight-bold: 670;
+      --color-bg: #0C1620; --color-surface: #152331; --color-panel: #111D29;
+      --color-ink: #E9F0F4; --color-ink-muted: #AFC0CC; --color-disabled: #6B7484;
+      --color-line: #263A4B; --color-control-line: #6F879A;
+      --color-accent: #7CCBDB; --color-accent-strong: #A8E0EA; --color-on-accent: #0C1620; --color-option-hover: #7CCBDB;
+      --color-meaning: #E89048; --color-meaning-strong: #F0A866; --color-meaning-soft: #3D2716; --color-meaning-ink: #CCBAA9;
+      --color-card-light: rgb(56 214 240 / 0.45); --color-card-light-core: rgb(120 228 246 / 0.55);
+      --color-card-edge: rgb(124 203 219 / 0.2); --color-card-edge-bright: rgb(120 228 246 / 0.8);
+      --color-backdrop: rgb(5 8 14 / 0.75); --color-shadow: rgb(0 0 0 / 0.6);
+      --shadow-tray: 0 -0.5rem 1.5rem rgb(0 0 0 / 0.4);
+      --shadow-dialog: 0 1.5rem 3rem rgb(0 0 0 / 0.7), 0 0 0 1px var(--color-line);
+    }
   }
 
   /* Narrow screens: containers sit closer to the edge */
-  @media (width <= 40rem) {
+  @media (max-width: 40rem) {
     :root { --inset: var(--space-4); --gap-region: var(--space-6); }
   }
   /* On the narrowest phones the tray's thumbnails and button can wrap to two rows, so the clearance reserves both */
-  @media (width <= 24rem) {
+  @media (max-width: 24rem) {
     :root { --tray-clearance: calc(2 * var(--target-min) + var(--gap-tight) + 2 * var(--tray-pad) + var(--gap-group)); }
   }
   /* Short windows: the fixed tray's padding is a step smaller */
-  @media (height <= 30rem) {
+  @media (max-height: 30rem) {
     :root { --tray-pad: var(--space-3); }
   }
 
   /* More contrast asked for: hairlines take the control border, and the disabled grey moves a step toward the text */
   @media (prefers-contrast: more) {
-    :root { --color-line: var(--color-control-line); --color-disabled: light-dark(#767C88, #7D8696); }
+    :root { --color-line: var(--color-control-line); --color-disabled: #767C88; }
+    :root:where([data-theme="dark"]) { --color-disabled: #7D8696; }
+  }
+  @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) { --color-disabled: #7D8696; }
   }
 
   /* Below 64rem the title runs the full measure: the size is the measure over 5.05, the width of "EXIT Games" in
      ems in Hanken Grotesk at these weights with a little room to spare, capped at the desktop's 8rem. The measure
-     is the masthead's width in container units, since 100vw also counts a classic scrollbar. */
-  @media (width <= 64rem) {
-    :root { --text-display: min(8rem, 100cqi / 5.05) / 0.9; }
+     is the masthead's width in container units, since 100vw also counts a classic scrollbar. Browsers without
+     container units keep the wide-screen size, which fits inside the measure at every width. */
+  @supports (width: 1cqi) {
+    @media (max-width: 64rem) {
+      :root { --text-display: min(8rem, 100cqi / 5.05) / 0.9; }
+    }
   }
 }
 
@@ -257,7 +298,7 @@
   /* Wide screens keep the scrollbar's room so the page behind a centered dialog does not shift.
      Narrow screens skip it: their full-width dialogs and the sheet cover the page, and a kept
      gutter would leave an empty strip beside them. */
-  @media (width > 64rem) {
+  @media not all and (max-width: 64rem) {
     html { scrollbar-gutter: stable; }
   }
   html:has(dialog[open]) { overflow: hidden; }
@@ -292,18 +333,18 @@
   .lede-source { margin-block-start: var(--gap-row); }
   /* The dash marks the quotation; screen readers skip it where the browser supports alternative text for generated content */
   .lede-source::before { content: "\2014\00a0"; content: "\2014\00a0" / ""; }
-  @media (width > 40rem) {
+  @media not all and (max-width: 40rem) {
     .masthead { display: grid; grid-template-columns: var(--grid-tracks); column-gap: var(--gutter); }
     .masthead h1 { grid-column: 1 / -1; }
     .lede { grid-column: 1 / span 16; }
   }
-  @media (width > 64rem) {
+  @media not all and (max-width: 64rem) {
     .masthead { align-items: end; }
     .masthead h1 { grid-column: 1 / span 14; }
     .lede { grid-column: 15 / -1; margin: 0; }
   }
   /* Beside two cards, the deck starts on the second card's line */
-  @media (width > 75rem) {
+  @media not all and (max-width: 75rem) {
     .masthead h1 { grid-column: 1 / span 15; }
     .lede { grid-column: 16 / -1; }
   }
@@ -317,15 +358,15 @@
   }
   /* Phones, below where two full cards fit: two narrow cards a row's gap apart, since one card to a row is too large
      to scan or compare */
-  @media (width < 42.5rem) {
+  @media not all and (min-width: 42.5rem) {
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-row); }
   }
   .grid[data-columns="3"] { --columns: 3; }
   /* Wide screens: two columns, and from 75rem the Columns switch sets the count */
-  @media (width > 64rem) {
+  @media not all and (max-width: 64rem) {
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-  @media (width > 75rem) {
+  @media not all and (max-width: 75rem) {
     .grid { grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); }
   }
 
@@ -334,20 +375,20 @@
      evenly into two or three on grid lines. The space below sits outside the catalog, so the
      stuck panel's bottom stops level with the last card's. */
   .catalog { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); align-items: start; margin-block-end: var(--gap-region); }
-  @media (width > 64rem) {
+  @media not all and (max-width: 64rem) {
     .catalog { grid-template-columns: var(--grid-tracks); column-gap: var(--gutter); }
     .filters-panel { grid-column: 1 / span 8; }
     .catalog > main { grid-column: 9 / -1; }
   }
-  @media (width > 75rem) {
+  @media not all and (max-width: 75rem) {
     .filters-panel { grid-column: 1 / span 6; }
     .catalog > main { grid-column: 7 / -1; }
   }
 
   /* The tray covers the bottom of the window, so the page keeps room beneath its end, and an element
-     scrolled into view, by focus or by script, stops above the tray */
-  body:has(.tray:not([hidden])) { padding-block-end: var(--tray-clearance); }
-  html:has(.tray:not([hidden])) { scroll-padding-block-end: var(--tray-clearance); }
+     scrolled into view, by focus or by script, stops above the tray. The page script sets data-tray while it shows. */
+  html[data-tray] { scroll-padding-block-end: var(--tray-clearance); }
+  html[data-tray] body { padding-block-end: var(--tray-clearance); }
 
   /* The footer is a colophon on the ground: space separates it, not a rule. Above its contents sit the
      catalog's end margin and the top padding, so the bottom padding is both, and the space is even. */
@@ -358,7 +399,7 @@
   /* The text block's auto end margin absorbs its line's spare room: on one line with the theme switch the switch sits
      at the end, and once the switch wraps to a line of its own, it is centered alone */
   .footer-text { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-tight) var(--gap-region); max-width: 60rem; margin-inline-end: auto; color: var(--color-ink-muted); }
-  @media (width <= 44rem) {
+  @media (max-width: 44rem) {
     .footer-text { grid-template-columns: minmax(0, 1fr); }
   }
   /* Credit links sit on the ground, where the light theme's clickable teal is under the page's 7:1 for text, so they
@@ -434,7 +475,7 @@
      without it the panel fills the window once stuck. */
   .filters-panel {
     position: sticky; inset-block-start: var(--gap-stack);
-    max-block-size: var(--panel-max, calc(100dvh - 2 * var(--gap-stack)));
+    max-block-size: var(--panel-max, calc(var(--viewport-block) - 2 * var(--gap-stack)));
     display: flex; flex-direction: column; overflow: hidden;
     /* A hairline a step lighter than the panel keeps its edge distinct from the ground */
     border: 1px solid var(--color-surface); border-radius: var(--radius-m);
@@ -451,7 +492,7 @@
 
   /* Narrow screens: the Filters button and Sort on one row, the panel moves to the sheet */
   .controls { display: none; }
-  @media (width <= 64rem) {
+  @media (max-width: 64rem) {
     .filters-panel { display: none; }
     .controls { display: flex; gap: var(--gap-tight); margin-block-end: var(--gap-stack); }
     .controls .sort { flex: 1; min-inline-size: 0; }
@@ -486,16 +527,19 @@
   }
   .option input[type="radio"] { border-radius: 50%; }
   .option input::before {
-    content: ""; inline-size: 0.7rem; block-size: 0.7rem; scale: 0; background: var(--color-on-accent);
+    content: ""; inline-size: 0.7rem; block-size: 0.7rem; transform: scale(0); background: var(--color-on-accent);
     clip-path: polygon(12% 46%, 0 62%, 40% 100%, 100% 22%, 86% 8%, 40% 70%);
   }
   .option input[type="radio"]::before { clip-path: none; border-radius: 50%; inline-size: 0.5rem; block-size: 0.5rem; }
   .option input:checked { background: var(--color-accent); }
-  .option input:checked::before { scale: 1; }
-  .option input:focus-visible { outline: none; }
+  .option input:checked::before { transform: scale(1); }
+  /* The ring goes round the whole option; a browser without :has() keeps the box's own ring */
+  @supports selector(:has(*)) {
+    .option input:focus-visible { outline: none; }
+  }
   .option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: 1px; }
   @media (prefers-reduced-motion: no-preference) {
-    .option input::before { transition: scale var(--motion-quick) var(--motion-ease); }
+    .option input::before { transition: transform var(--motion-quick) var(--motion-ease); }
   }
   @media (forced-colors: active) {
     .option input { border-color: ButtonText; }
@@ -532,7 +576,7 @@
     margin-block-end: var(--gap-stack);
   }
   .results-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-tight) var(--gap-section); }
-  @media (width <= 64rem) {
+  @media (max-width: 64rem) {
     .results-tools { display: none; }
   }
 
@@ -546,19 +590,24 @@
   }
   .columns .option:first-of-type { border-start-start-radius: var(--radius-m); border-end-start-radius: var(--radius-m); }
   .columns .option:last-of-type { border-start-end-radius: var(--radius-m); border-end-end-radius: var(--radius-m); }
-  .columns .option:has(:checked) { background: var(--color-accent); color: var(--color-on-accent); }
+  /* is-chosen marks the checked side; the page script sets it */
+  .columns .option.is-chosen { background: var(--color-accent); color: var(--color-on-accent); }
   /* The unchosen side takes the options' hover tint, not a fill, so it never looks selected */
-  .columns .option:not(:has(:checked)):hover { background: var(--color-bg); color: var(--color-accent-strong); }
+  .columns .option:not(.is-chosen):hover { background: var(--color-bg); color: var(--color-accent-strong); }
   /* The radio covers its segment unseen, so the whole segment is the click target */
   .columns .option input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; border: 0; border-radius: inherit; opacity: 0; }
   .columns .option:has(input:focus-visible) { outline-offset: 2px; z-index: 1; }
+  /* The radio is unseen, so without :has() the segment rings whenever focus is in it, a mouse click included */
+  @supports not selector(:has(*)) {
+    .columns .option:focus-within { outline: var(--focus-width) solid var(--color-accent); outline-offset: 2px; z-index: 1; }
+  }
   /* Forced colors replace the fill, so the chosen side takes the system highlight and both sides an edge */
   @media (forced-colors: active) {
     .columns .option { border: 1px solid ButtonText; }
-    .columns .option:has(:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+    .columns .option.is-chosen { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
   }
   /* Three cards are too narrow below 75rem */
-  @media (width <= 75rem) {
+  @media (max-width: 75rem) {
     .columns { display: none; }
   }
 
@@ -708,7 +757,7 @@
   .card-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-tight) var(--gap-stack); }
   .card-kind { display: inline-flex; gap: var(--gap-row); margin-inline-start: auto; white-space: nowrap; }
   /* Three cards across: the pair always takes its own line, left-aligned, so no card differs */
-  @media (width > 75rem) {
+  @media not all and (max-width: 75rem) {
     .grid[data-columns="3"] .card-kind { flex-basis: 100%; margin-inline-start: 0; }
   }
   .card-year { color: var(--color-ink-muted); }
@@ -779,7 +828,7 @@
   /* Phones, two cards across: a tighter inset and gaps, the type and year on a line of their own that can wrap, and
      Compare under Difficulty on a row of its own, from its start, with the limit note opening from there and kept
      inside the card. The grid's sixth row holds Compare. */
-  @media (width < 42.5rem) {
+  @media not all and (min-width: 42.5rem) {
     .card { --inset-card: var(--space-3); }
     .card-body { column-gap: var(--gap-tight); grid-template-rows: auto 1fr auto auto auto auto; }
     .card-head { gap: var(--gap-row); margin-block-end: var(--gap-row); }
@@ -791,7 +840,11 @@
       grid-column: 1 / -1; grid-row: 6; justify-self: start;
       margin: calc(var(--gap-tight) - var(--reach)) 0 calc(-1 * var(--reach)) calc(-1 * var(--gap-tight));
     }
-    .card .toggletip { inset-inline: 0 auto; max-inline-size: calc(100cqi - 2 * var(--inset-card)); }
+    /* Without container units the card's width comes from the window's: half of it, less the page insets and the gap */
+    .card .toggletip { inset-inline: 0 auto; max-inline-size: calc((100vw - 2 * var(--inset) - var(--gap-row)) / 2 - 2 * var(--inset-card)); }
+    @supports (width: 1cqi) {
+      .card .toggletip { max-inline-size: calc(100cqi - 2 * var(--inset-card)); }
+    }
     .card .toggletip::after { inset-inline: 0.75rem auto; }
     /* The widest badge with its count is 164px, so a card under 188px shows the score alone; screen readers still hear the count */
     @container card (inline-size < 188px) {
@@ -942,7 +995,7 @@
   @keyframes dialog-title-in { from, 20% { opacity: 0; } 50%, to { opacity: 1; } }
   @keyframes dialog-fade-in { from { opacity: 0; } }
 
-  @media (width <= 40rem) {
+  @media (max-width: 40rem) {
     .tray-count { display: none; }
     .tray-inner { flex-wrap: wrap; }
     .tray-items { min-inline-size: auto; gap: var(--gap-hair); }
@@ -961,7 +1014,7 @@
      part of it takes its height from the rest. */
   .details {
     inline-size: min(var(--dialog-max), 100% - 2 * var(--inset));
-    max-block-size: min(54rem, 100dvh - 2 * var(--inset));
+    max-block-size: min(54rem, var(--viewport-block) - 2 * var(--inset));
     padding: 0; border: 0; border-radius: var(--radius-m);
     background: var(--color-surface); color: var(--color-ink);
     box-shadow: var(--shadow-dialog);
@@ -1015,22 +1068,23 @@
 
   /* Details: the meta line, a deck, the facts in a row between hairlines, then the story on the
      left and the review lists and ratings on the right, then the actions */
-  /* Story and reviews split 7:5; the head and the actions row repeat that split, so their columns line up */
+  /* Story and reviews split 7:5; the actions row repeats that split, so their columns line up. The content sits the
+     dialog's inset from the title bar's hairline, as from its sides. */
   .details-main {
     display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     column-gap: var(--gutter); row-gap: var(--gap-section);
-    padding: var(--gap-tight) var(--inset) var(--inset);
+    padding: var(--inset);
   }
   .details-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-stack) var(--gutter); }
-  /* With a photo, the opening sits beside it at three times its width */
-  .details-head:has(.details-stage) { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+  /* With a photo (has-photo, set by the page script), the opening sits beside it at three times its width */
+  .details-head.has-photo { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
   /* The opening stretches to the photo's height and the deck's row takes the slack, so the fact row ends level with the photo */
   .details-opening { display: grid; grid-template-rows: auto 1fr auto; row-gap: var(--gap-stack); min-inline-size: 0; }
   .details-stage { aspect-ratio: 1; align-self: start; position: relative; }
   .details-opening .card-meta { justify-content: flex-start; gap: var(--gap-tight) var(--gap-row); }
   .details .dialog-title { min-inline-size: 0; }
   /* Without a photo the deck keeps the story's measure */
-  .details-head:not(:has(.details-stage)) .bottom-line { max-inline-size: 62ch; }
+  .details-head:not(.has-photo) .bottom-line { max-inline-size: 62ch; }
   .details .facts {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--gap-row) var(--gap-stack);
     padding-block: var(--gap-stack); border-block: 1px solid var(--color-line);
@@ -1047,7 +1101,7 @@
   .details-actions {
     grid-column: 1 / -1;
     display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); column-gap: var(--gutter); align-items: start;
-    padding-block-start: var(--gap-section); border-block-start: 1px solid var(--color-line);
+    padding-block-start: var(--gap-row); border-block-start: 1px solid var(--color-line);
   }
   .section--buy { grid-column: 1; }
   /* Its top padding clears the Where to buy label and the gap under it, so its line sits level with the store links */
@@ -1080,7 +1134,7 @@
   /* Padding grows the link's target to the 24px minimum, and matching negative margins give the height back
      where the link is laid out as a block (a flex item), so the text keeps its place */
   .store {
-    --reach: calc((var(--target-row) - 1lh) / 2);
+    --reach: calc((var(--target-row) - var(--leading-value)) / 2);
     padding-block: var(--reach); margin-block: calc(-1 * var(--reach));
     color: var(--color-accent);
     text-decoration: underline; text-decoration-thickness: var(--underline); text-underline-offset: 0.2em;
@@ -1088,20 +1142,20 @@
   .store:hover { color: var(--color-accent-strong); --underline: 2px; }
   .store svg { width: 0.65em; height: 0.65em; fill: currentColor; margin-inline-start: var(--gap-hair); vertical-align: 0.05em; }
 
-  @media (width <= 44rem) {
-    .details { inline-size: 100%; max-inline-size: 100%; max-block-size: 100dvh; block-size: 100dvh; border-radius: 0; }
+  @media (max-width: 44rem) {
+    .details { inline-size: 100%; max-inline-size: 100%; max-block-size: var(--viewport-block); block-size: var(--viewport-block); border-radius: 0; }
     /* The title bar's space below matches its space above, with content scrolled under it or not */
     .details:not(.details--compare) .bar--head { padding-block-end: var(--gap-group); }
-    .details-main { grid-template-columns: minmax(0, 1fr); padding-block-start: 0; }
+    .details-main { grid-template-columns: minmax(0, 1fr); }
     /* The photo takes two fifths of the width, with the meta line and deck beside it and the facts in a row beneath
        both; the deck's row takes the slack when the photo is the taller */
-    .details-head:has(.details-stage) { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto 1fr auto; column-gap: var(--gutter); }
-    .details-head:has(.details-stage) .details-opening { display: contents; }
+    .details-head.has-photo { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-rows: auto 1fr auto; column-gap: var(--gutter); }
+    .details-head.has-photo .details-opening { display: contents; }
     .details-stage { grid-column: 1; grid-row: 1 / span 2; }
-    .details-head:has(.details-stage) .card-meta { grid-column: 2; grid-row: 1; }
-    .details-head:has(.details-stage) .bottom-line { grid-column: 2; grid-row: 2; align-self: start; }
-    .details-head:has(.details-stage) .facts { grid-column: 1 / -1; grid-row: 3; }
-    .details-head:not(:has(.details-stage)) .bottom-line { grid-column: 1 / -1; }
+    .details-head.has-photo .card-meta { grid-column: 2; grid-row: 1; }
+    .details-head.has-photo .bottom-line { grid-column: 2; grid-row: 2; align-self: start; }
+    .details-head.has-photo .facts { grid-column: 1 / -1; grid-row: 3; }
+    .details-head:not(.has-photo) .bottom-line { grid-column: 1 / -1; }
     .details .facts { justify-content: flex-start; gap: var(--gap-row) var(--gap-section); }
     .section--story, .details-aside { grid-column: 1 / -1; }
     .details-actions { grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-stack); }
@@ -1116,7 +1170,7 @@
      beneath them, and one at each far edge while more content waits there. */
   /* Compare scrolls in its table area, not as a whole, so its header row and label column can stick. The dialog's
      height is fixed, which gives that area a definite height rather than one derived from the table. */
-  .details--compare { --dialog-max: 72rem; block-size: min(54rem, 100dvh - 2 * var(--inset)); overflow: hidden; }
+  .details--compare { --dialog-max: 72rem; block-size: min(54rem, var(--viewport-block) - 2 * var(--inset)); overflow: hidden; }
   .details--compare[open] { display: flex; flex-direction: column; }
   .compare-frame { --label-col: 9rem; --game-col-min: 12rem; position: relative; flex: 1; min-block-size: 0; display: flex; }
   .compare-scroll {
@@ -1152,11 +1206,11 @@
   }
   .compare-table thead th:first-child { z-index: 4; }
 
-  /* A game's header holds only its photo over its name, so a screen reader repeating it on each cell says the name alone */
-  .compare-head { --thumb: 3rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-tight); }
-  .compare-head .compare-name { overflow-wrap: anywhere; }
-  /* The remove buttons' row, under the header, each at its column's end */
-  .compare-table .compare-remove td { padding-block: var(--gap-tight); text-align: end; }
+  /* A game's header: its photo, its remove button at the column's end, and its name beneath both. The header
+     cell's aria-label is the name, so a screen reader repeating the header on each cell says the name alone,
+     not the button's label with it. */
+  .compare-head { --thumb: 3rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--gap-tight); }
+  .compare-head .compare-name { grid-column: 1 / -1; overflow-wrap: anywhere; }
   .compare-table ul { padding-inline-start: var(--gap-stack); display: grid; gap: var(--gap-hair); }
   .compare-table .rating { white-space: normal; }
   .compare-table .stores { gap: var(--gap-hair); flex-direction: column; padding: 0; }
@@ -1212,13 +1266,17 @@
   .compare-frame:has(.compare-scroll:focus-visible) .compare-ring {
     outline: var(--focus-width) solid var(--color-accent); outline-offset: calc(-1 * var(--focus-width));
   }
+  /* Without :has() the ring shows whenever focus is in the table, a mouse click or a store link included */
+  @supports not selector(:has(*)) {
+    .compare-frame:focus-within .compare-ring { outline: var(--focus-width) solid var(--color-accent); outline-offset: calc(-1 * var(--focus-width)); }
+  }
 
   @keyframes shadow-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes shadow-out { from { opacity: 1; } to { opacity: 0; } }
 
-  @media (width <= 44rem) {
+  @media (max-width: 44rem) {
     /* Full screen, as Details is; the shell's phone rule comes before Compare's fixed height, so it is restated here */
-    .details--compare { block-size: 100dvh; }
+    .details--compare { block-size: var(--viewport-block); }
     /* Wide enough for the longest label word, "Difficulty", inside the dialog's inset */
     .compare-frame { --label-col: 6.25rem; }
     /* Two games fit, and a sliver of the next one peeks in to show there is more */
@@ -1231,7 +1289,7 @@
 
   /* Bottom sheet holding the Filters content on narrow screens */
   .sheet {
-    margin: auto 0 0; inline-size: 100%; max-inline-size: 100%; max-block-size: 85dvh;
+    margin: auto 0 0; inline-size: 100%; max-inline-size: 100%; max-block-size: calc(0.85 * var(--viewport-block));
     padding: 0; border: 0; border-radius: var(--radius-m) var(--radius-m) 0 0;
     background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-dialog);
   }
@@ -1320,13 +1378,14 @@
     inline-size: calc((100% - 2 * var(--gap-hair)) / 3);
     border: 1px solid var(--color-accent); border-radius: var(--radius-pill);
     background: var(--color-accent);
-    translate: calc(var(--switch-index) * 100%) 0;
+    transform: translateX(calc(var(--switch-index) * 100%));
   }
-  .theme-switch-track:has(input[value="light"]:checked) { --switch-index: 0; }
-  .theme-switch-track:has(input[value="dark"]:checked) { --switch-index: 1; }
-  .theme-switch-track:has(input[value="system"]:checked) { --switch-index: 2; }
+  /* data-choice names the checked option and is-chosen marks it; the page script sets both */
+  .theme-switch-track[data-choice="light"] { --switch-index: 0; }
+  .theme-switch-track[data-choice="dark"] { --switch-index: 1; }
+  .theme-switch-track[data-choice="system"] { --switch-index: 2; }
   @media (prefers-reduced-motion: no-preference) {
-    .theme-switch-track::before { transition: translate var(--motion-slow) var(--motion-ease); }
+    .theme-switch-track::before { transition: transform var(--motion-slow) var(--motion-ease); }
     .theme-option { transition: color var(--motion-quick) var(--motion-ease), background-color var(--motion-quick) var(--motion-ease); }
   }
   .theme-option {
@@ -1334,13 +1393,17 @@
     block-size: var(--switch-option); border-radius: var(--radius-pill); cursor: pointer;
     color: var(--color-accent);
   }
-  .theme-option:has(input:checked) { color: var(--color-on-accent); }
+  .theme-option.is-chosen { color: var(--color-on-accent); }
   /* An unchosen option takes the options' hover tint, not a fill, so it never reads as a second thumb */
-  .theme-option:not(:has(input:checked)):hover { background: var(--color-bg); }
+  .theme-option:not(.is-chosen):hover { background: var(--color-bg); }
   /* The radio is hidden, so the option shows its focus ring. Focus sits on the chosen option, which the
      thumb fills in the ring's color, so the ring is drawn outside it, over the track and the ground, and
      above the neighbouring options. */
   .theme-option:has(input:focus-visible) { outline: var(--focus-width) solid var(--color-accent); outline-offset: var(--focus-offset); z-index: 1; }
+  /* Without :has() the option rings whenever focus is in it, a mouse click included */
+  @supports not selector(:has(*)) {
+    .theme-option:focus-within { outline: var(--focus-width) solid var(--color-accent); outline-offset: var(--focus-offset); z-index: 1; }
+  }
   .theme-option svg { inline-size: var(--switch-icon); block-size: var(--switch-icon); }
 }
 
@@ -1370,19 +1433,19 @@
 
   /* Phones: the compare table's verdicts at the body size, and its names at the value size,
      so a name breaks into two lines in a narrow column, not one word a line */
-  @media (width <= 44rem) {
+  @media (max-width: 44rem) {
     .compare-verdict { font: var(--weight-light) var(--text-body) var(--font); }
     .compare-name { font: var(--weight-semibold) var(--text-value) var(--font); }
   }
 
   /* Three cards across: the name and the bottom line each a step down the scale */
-  @media (width > 75rem) {
+  @media not all and (max-width: 75rem) {
     .grid[data-columns="3"] .card-title { font: var(--weight-semibold) var(--text-deck) var(--font); }
     .grid[data-columns="3"] .verdict { font: var(--weight-light) var(--text-body) var(--font); }
   }
   /* Two cards across on phones: the name a step down, the bottom line and fact values at the meta size, and
      Compare at the meta size where it shares the foot row with Difficulty */
-  @media (width < 42.5rem) {
+  @media not all and (min-width: 42.5rem) {
     .card-title { font: var(--weight-semibold) var(--text-deck) var(--font); }
     .verdict { font: var(--weight-light) var(--text-meta) var(--font); }
     .card .fact dd { font: var(--weight-semibold) var(--text-meta) var(--font); }
@@ -1771,16 +1834,17 @@
      stylesheet's; 42.5rem is where two full cards fit (2 * 19rem + 1.5rem gutter + 2 * 1.5rem inset), and below it
      two narrow cards share the width with a 0.75rem gap, inside a 1rem inset up to 40rem and 1.5rem above. */
   const cardSizes = (columns) => [
-    "(width <= 40rem) calc(33.33vw - 1.92rem)",
-    "(width < 42.5rem) calc(33.33vw - 2.25rem)",
-    "(width <= 64rem) calc(33.33vw - 2.5rem)",
-    "(width <= 75rem) calc(22.22vw - 2.33rem)",
-    columns === "3" ? "(width < 80rem) calc(16.67vw - 2.25rem)" : "(width < 80rem) calc(25vw - 2.375rem)",
+    "(max-width: 40rem) calc(33.33vw - 1.92rem)",
+    "(max-width: 42.49rem) calc(33.33vw - 2.25rem)",
+    "(max-width: 64rem) calc(33.33vw - 2.5rem)",
+    "(max-width: 75rem) calc(22.22vw - 2.33rem)",
+    columns === "3" ? "(max-width: 79.99rem) calc(16.67vw - 2.25rem)" : "(max-width: 79.99rem) calc(25vw - 2.375rem)",
     columns === "3" ? "11.0625rem" : "17.625rem",
   ].join(", ");
   /* Details: full screen up to 44rem, with a photo of two fifths of the width less the insets and gutter; wider, a photo
-     of 3 of the dialog's 12 columns, which stops growing at 67rem, where the dialog reaches its 64rem maximum */
-  const DETAILS_SIZES = "(width <= 40rem) calc(40vw - 1.4rem), (width <= 44rem) calc(40vw - 1.8rem), (width < 67rem) calc(25vw - 2.625rem), 14.125rem";
+     a quarter of the content's width once the gutter is taken out, which stops growing at 67rem, where the dialog
+     reaches its 64rem maximum */
+  const DETAILS_SIZES = "(max-width: 40rem) calc(40vw - 1.4rem), (max-width: 44rem) calc(40vw - 1.8rem), (max-width: 66.99rem) calc(25vw - 1.875rem), 14.875rem";
   const THUMB_SIZES = "3rem";
 
   const photoAttrs = (image, sizes) =>
@@ -2131,19 +2195,26 @@
     return box;
   }
 
+  /* Marks the label of each radio in a group that is checked, which the stylesheet draws as the chosen option */
+  function markChosen(inputs) {
+    for (const input of inputs) input.closest("label").classList.toggle("is-chosen", input.checked);
+  }
+
   /* ---------- Columns switch: 2 or 3 cards across on wide screens, saved on its own key ---------- */
   const columnInputs = [...document.querySelectorAll('#columns input[name="columns"]')];
   for (const input of columnInputs) {
     input.checked = input.value === grid.dataset.columns;
     input.addEventListener("change", () => {
+      markChosen(columnInputs);
       showGrid(true, () => setColumns(input.value));
       try { localStorage.setItem(COLUMNS_KEY, input.value); } catch { }
     });
   }
+  markChosen(columnInputs);
 
   /* ---------- Layout switch: the panel body, Clear button and Sort move; nothing is duplicated ---------- */
   /* The stylesheet's narrow breakpoint, where the panel's contents move to the sheet */
-  const narrow = matchMedia("(width <= 64rem)");
+  const narrow = matchMedia("(max-width: 64rem)");
   function placeControls() {
     if (narrow.matches) {
       $("sheet-pane").append(filtersBody);
@@ -2483,6 +2554,7 @@
     syncChecks();
 
     tray.hidden = compare.length === 0;
+    document.documentElement.toggleAttribute("data-tray", !tray.hidden);
     queueFit();
     /* An emptied tray leaves with its last contents in place and out of reach; the next add rebuilds them */
     tray.inert = tray.hidden;
@@ -2590,10 +2662,9 @@
       <colgroup><col class="label-col">${chosen.map(() => `<col class="game-col">`).join("")}</colgroup>
       <thead><tr>
         <th scope="col"><span class="visually-hidden">Detail</span></th>
-        ${chosen.map(({ game }) => `<th scope="col"><div class="compare-head">${thumb(game)}<span class="compare-name">${esc(game.name)}</span></div></th>`).join("")}
+        ${chosen.map(({ game }) => `<th scope="col" aria-label="${esc(game.name)}"><div class="compare-head">${thumb(game)}${removeButton(game)}<span class="compare-name">${esc(game.name)}</span></div></th>`).join("")}
       </tr></thead>
       <tbody>
-        <tr class="compare-remove"><th scope="row"><span class="visually-hidden">Remove</span></th>${chosen.map(({ game }) => `<td>${removeButton(game)}</td>`).join("")}</tr>
         ${COMPARE_ROWS.map(([label, cell]) => `<tr><th scope="row">${label}</th>${chosen.map((item) => `<td>${cell(item)}</td>`).join("")}</tr>`).join("")}
       </tbody>`;
   }
@@ -2636,7 +2707,7 @@
     const { game } = item;
     $("d-title").textContent = game.name;
     dMain.innerHTML = `
-      <div class="details-head">
+      <div class="details-head${game.image ? " has-photo" : ""}">
         ${game.image ? `<div class="details-stage">${photoHtml(game.image, DETAILS_SIZES)}</div>` : ""}
         <div class="details-opening">
           <p class="card-meta">${scoreBadge(item)}${SPOKEN_COMMA}<span class="card-type">${esc(game.type)}</span>${SPOKEN_COMMA}<span class="card-year">${game.year}</span></p>
@@ -2793,7 +2864,7 @@
     dialog.addEventListener("close", release);
   }
   /* The stylesheet's breakpoint where Details fills the screen; the sheet opens only on narrow screens */
-  const fullScreenDetails = matchMedia("(width <= 44rem)");
+  const fullScreenDetails = matchMedia("(max-width: 44rem)");
   pullToClose(details, details, () => fullScreenDetails.matches);
   pullToClose(sheet, $("sheet-pane"), () => true);
 
@@ -2810,10 +2881,15 @@
   /* ---------- Theme switch: Light and Dark set data-theme and save the choice; System clears both ---------- */
   const THEME_KEY = "ai-playground-theme";
   const themeSwitch = document.querySelector(".theme-switch");
+  const themeTrack = themeSwitch.querySelector(".theme-switch-track");
+  const themeInputs = [...themeSwitch.querySelectorAll('input[name="theme"]')];
   const currentTheme = document.documentElement.dataset.theme ?? "system";
-  for (const input of themeSwitch.querySelectorAll('input[name="theme"]')) {
+  themeTrack.dataset.choice = currentTheme;
+  for (const input of themeInputs) {
     input.checked = input.value === currentTheme;
     input.addEventListener("change", () => {
+      markChosen(themeInputs);
+      themeTrack.dataset.choice = input.value;
       const root = document.documentElement;
       if (input.value === "system") delete root.dataset.theme;
       else root.dataset.theme = input.value;
@@ -2823,6 +2899,7 @@
       } catch { }
     });
   }
+  markChosen(themeInputs);
   themeSwitch.hidden = false;
 
   /* ---------- Details photos ahead of time ---------- */

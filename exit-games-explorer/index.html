@@ -691,6 +691,9 @@
      grid changes, so once it has faded out it collapses to the games area's corner and cannot extend the page past
      its end. */
   .card-light:not(.is-on), .card-edge:not(.is-on) { translate: 0 0; inline-size: 0; block-size: 0; }
+  /* The layers move from card to card under the pointer; a browser that took one as its scroll anchor would
+     scroll the page by each move to hold it in place */
+  .card-light, .card-edge { overflow-anchor: none; }
   @media (prefers-reduced-motion: no-preference) {
     .card-light:not(.is-on), .card-edge:not(.is-on) {
       transition: opacity var(--motion-base) var(--motion-ease),
